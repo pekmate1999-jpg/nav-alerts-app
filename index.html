@@ -36,6 +36,10 @@ header.top{position:sticky;top:0;z-index:5;background:var(--head);color:var(--he
 .top-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .top h1{margin:0;font:700 26px/1 var(--f-cond);letter-spacing:.2px}
 .top .status{font-size:13px;opacity:.75}
+.installbtn{border:1px solid currentColor;background:none;color:inherit;border-radius:999px;padding:4px 12px;font:600 14px var(--f-body);cursor:pointer}
+.diag{list-style:none;padding:0;margin:8px 0 0;font-size:14px}
+.diag li{padding:4px 0;border-top:1px solid var(--line)}
+.diag li:first-child{border-top:0}
 .iconbtn{background:none;border:0;padding:8px;margin:-8px;cursor:pointer;color:inherit;font-size:20px;line-height:1}
 
 /* --- szűrők --- */
@@ -152,7 +156,10 @@ textarea.rolam{width:100%;min-height:150px;padding:10px;border:1px solid var(--l
 <header class="top">
   <div class="top-row">
     <h1>Árverésfigyelő</h1>
-    <button class="iconbtn" id="reload" aria-label="Frissítés">⟳</button>
+    <div style="display:flex;gap:14px;align-items:center">
+      <button class="installbtn" id="install" hidden>Telepítés</button>
+      <button class="iconbtn" id="reload" aria-label="Frissítés">⟳</button>
+    </div>
   </div>
   <div class="status" id="status">Betöltés…</div>
 </header>
@@ -446,9 +453,9 @@ const LISTS = [
 function renderSettings() {
   const s = S.settings;
   const main = $("#main");
-  if (!s) { main.innerHTML = `<div class="empty"><strong>A beállítások még nem tölthetők be</strong>A bot első futása után jelennek meg.</div>` + connPanel(); return; }
+  if (!s) { main.innerHTML = installPanel() + `<div class="empty"><strong>A beállítások még nem tölthetők be</strong>A bot első futása után jelennek meg.</div>` + connPanel(); return; }
   const r = S.run;
-  main.innerHTML = `
+  main.innerHTML = installPanel() + `
   <section class="panel">
     <h2>Bot futtatása</h2>
     <p class="runstate">${r ? esc(runText(r)) : "Az utolsó futás nem kérdezhető le."}</p>
@@ -537,6 +544,7 @@ document.addEventListener("click", async (ev) => {
   if (t.dataset.f) { S[t.dataset.f] = !S[t.dataset.f]; t.setAttribute("aria-pressed", S[t.dataset.f]); S.shown = PAGE; return render(); }
   if (t.id === "more") { S.shown += PAGE; return render(); }
   if (t.id === "reload") return load();
+  if (t.id === "install" || t.id === "install2") return doInstall();
   const lot = t.closest(".lot");
   if (lot && t.dataset.act) {
     const key = lot.dataset.key, e = S.byKey[key];
@@ -607,8 +615,46 @@ let qT; $("#q").addEventListener("input", (ev) => { clearTimeout(qT); qT = setTi
 $("#sort").addEventListener("change", (ev) => { S.sort = ev.target.value; render(); });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.cfg && S.loadedAt && Date.now() - S.loadedAt > 10 * 60e3) load(); });
 
+/* =================== telepítés =================== */
+const INST = { evt: null, installed: null, standalone: matchMedia("(display-mode: standalone)").matches || navigator.standalone === true, sw: false };
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); INST.evt = e; updInstall(); });
+window.addEventListener("appinstalled", () => { INST.evt = null; INST.installed = true; toast("Telepítve. Mostantól a kezdőképernyőről indítsd."); updInstall(); });
+async function checkInstalled() {
+  try { if (navigator.getInstalledRelatedApps) INST.installed = (await navigator.getInstalledRelatedApps()).length > 0; } catch {}
+  try { INST.sw = !!(navigator.serviceWorker && (await navigator.serviceWorker.getRegistration())?.active); } catch {}
+  updInstall();
+}
+function updInstall() {
+  const b = $("#install"); if (b) b.hidden = !INST.evt || INST.standalone;
+  if (S.tab === "settings" && $("#diag")) $("#diag").innerHTML = diagItems();
+}
+async function doInstall() {
+  if (!INST.evt) { toast("A Chrome most nem kínálja fel a telepítést. A Beállítások fülön látod, miért."); return; }
+  INST.evt.prompt();
+  const r = await INST.evt.userChoice.catch(() => null);
+  INST.evt = null; updInstall();
+  if (r?.outcome === "accepted") toast("Telepítés elindítva");
+}
+function diagItems() {
+  const yn = (v) => v === true ? "igen" : v === false ? "nem" : "nem ismert";
+  return [
+    `Most telepített appként fut: <b>${yn(INST.standalone)}</b>`,
+    `A Chrome szerint telepítve van: <b>${yn(INST.installed)}</b>`,
+    `A Chrome most felkínálja a telepítést: <b>${yn(!!INST.evt)}</b>`,
+    `Offline működés (service worker) aktív: <b>${yn(INST.sw)}</b>`,
+  ].map((x) => `<li>${x}</li>`).join("");
+}
+function installPanel() {
+  if (INST.standalone) return `<section class="panel"><h2>Telepítés</h2><p class="hint">Az app telepítve van és önállóan fut.</p></section>`;
+  return `<section class="panel"><h2>Telepítés</h2>
+    <p class="hint">${INST.evt ? "A telepítés elérhető." : INST.installed ? "A Chrome szerint már telepítve van. Keresd az app-listában „Árverés” néven. Ha nincs ott: Beállítások → Alkalmazások → Chrome → Egyéb engedélyek → Kezdőképernyő-parancsikonok → Engedélyezés, majd töröld az „Árverés” appot és telepítsd újra." : "A Chrome most nem kínálja fel. Frissítsd az oldalt, várj pár másodpercet, és nézd meg újra."}</p>
+    <ul class="diag" id="diag">${diagItems()}</ul>
+    <div class="btnrow"><button class="btn" id="install2" ${INST.evt ? "" : "disabled"}>App telepítése</button></div></section>`;
+}
+
 /* =================== indulás =================== */
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").then(() => setTimeout(checkInstalled, 1500)).catch(() => {});
+checkInstalled();
 (async () => {
   if (!S.cfg?.token) return renderSetup();
   S.cfg.workflow ||= "daily_scrape.yml"; S.cfg.branch ||= "main";
