@@ -13,184 +13,264 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --paper:#ECEEEA; --card:#FBFBF9; --ink:#1F2A44; --ink-soft:#5B6579; --line:#D3D7D0;
-  --stamp:#B4232A; --gain:#2E6B3F; --flag:#B88A12; --loss:#8A3B2E;
-  --head:#1F2A44; --head-ink:#ECEEEA;
-  --radius:10px; --tab-h:64px;
+  --paper:#EDEFEB; --card:#FFFFFF; --sunk:#F4F5F2; --ink:#1F2A44; --ink-soft:#5F687A; --ink-faint:#8A92A1; --line:#DDE0DA;
+  --stamp:#B4232A; --gain:#2B6A3D; --gain-bg:#E5F0E7; --flag:#A97C0F; --flag-bg:#F6EBCB; --loss:#9A3B2C;
+  --head:#1F2A44; --head-ink:#EEF0EC; --accent:#1F2A44;
+  --radius:12px; --tab-h:62px;
+  --shadow:0 1px 1px rgba(31,42,68,.04),0 2px 8px rgba(31,42,68,.06);
   --f-body:"Barlow",system-ui,sans-serif; --f-cond:"Barlow Condensed","Arial Narrow",sans-serif;
 }
 @media (prefers-color-scheme:dark){
-  :root{ --paper:#161C2A; --card:#1F2738; --ink:#E7EAF0; --ink-soft:#9AA3B5; --line:#30394D;
-         --stamp:#E0565C; --gain:#6BBF83; --flag:#E2B544; --loss:#E08A73; --head:#26324F; --head-ink:#E7EAF0; }
+  :root{ --paper:#141A27; --card:#1C2434; --sunk:#232C3E; --ink:#E8EBF1; --ink-soft:#A1A9B8; --ink-faint:#7C8597; --line:#2C3549;
+         --stamp:#E35B61; --gain:#73C58A; --gain-bg:#1F3328; --flag:#E2B544; --flag-bg:#3A3220; --loss:#E58C76;
+         --head:#1C2434; --head-ink:#E8EBF1; --accent:#E8EBF1; --shadow:none; }
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.45 var(--f-body);-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+html{overflow-x:clip}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
 a{color:inherit}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--stamp);outline-offset:2px}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.sr{position:absolute;left:0;top:0;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
+.ic.fill{fill:currentColor}
 
-/* --- fejléc --- */
-header.top{position:sticky;top:0;z-index:5;background:var(--head);color:var(--head-ink);
-  padding:calc(env(safe-area-inset-top) + 10px) 16px 10px}
-.top-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-.top h1{margin:0;font:700 26px/1 var(--f-cond);letter-spacing:.2px}
-.top .status{font-size:13px;opacity:.75}
-.installbtn{border:1px solid currentColor;background:none;color:inherit;border-radius:999px;padding:4px 12px;font:600 14px var(--f-body);cursor:pointer}
-.diag{list-style:none;padding:0;margin:8px 0 0;font-size:14px}
-.diag li{padding:4px 0;border-top:1px solid var(--line)}
-.diag li:first-child{border-top:0}
-.iconbtn{background:none;border:0;padding:8px;margin:-8px;cursor:pointer;color:inherit;font-size:20px;line-height:1}
+/* fejléc */
+header.top{position:sticky;top:0;z-index:5;background:var(--head);color:var(--head-ink);padding:calc(env(safe-area-inset-top) + 10px) 16px 10px}
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand img{width:32px;height:32px;border-radius:8px;flex:none}
+.top h1{margin:0;font:700 21px/1.05 var(--f-cond);letter-spacing:.2px}
+.top .status{font-size:12.5px;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-actions{display:flex;gap:6px;align-items:center;flex:none}
+.hbtn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 10px;border-radius:10px;border:0;background:rgba(255,255,255,.1);color:inherit;cursor:pointer;font:600 14px var(--f-body)}
+.hbtn.icononly{width:36px;padding:0;justify-content:center}
 
-/* --- szűrők --- */
-.filters{position:sticky;top:calc(env(safe-area-inset-top) + 56px);z-index:4;background:var(--paper);
-  padding:10px 16px 8px;border-bottom:1px solid var(--line)}
-.search{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
-.chips{display:flex;gap:6px;overflow-x:auto;padding-top:8px;scrollbar-width:none}
-.chips::-webkit-scrollbar{display:none}
-.chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;font-size:14px;cursor:pointer;white-space:nowrap}
-.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.chip select{border:0;background:none;padding:0}
+/* szűrők */
+.filters{position:sticky;top:calc(env(safe-area-inset-top) + 56px);z-index:4;background:var(--paper);padding:10px 16px 10px;border-bottom:1px solid var(--line)}
+.searchbox{position:relative}
+.searchbox .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint)}
+.search{width:100%;height:42px;padding:0 12px 0 38px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:15px}
+.frow{display:flex;gap:8px;align-items:center;margin-top:10px;overflow-x:auto;scrollbar-width:none;position:relative}
+.frow::-webkit-scrollbar{display:none}
+.seg{display:inline-flex;flex:none;background:var(--sunk);border-radius:9px;padding:3px;border:1px solid var(--line)}
+.seg button{border:0;background:none;padding:5px 12px;border-radius:7px;font-weight:600;font-size:14px;color:var(--ink-soft);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.chip{flex:none;display:inline-flex;align-items:center;gap:6px;height:32px;border:1px solid var(--line);background:none;border-radius:8px;padding:0 10px;font-size:14px;font-weight:500;color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{color:var(--ink);border-color:var(--ink-soft);background:var(--card)}
+.chip[aria-pressed="false"]{text-decoration:line-through;text-decoration-color:var(--ink-faint)}
+.chip.toggle[aria-pressed="false"]{text-decoration:none}
+.chip select{border:0;background:none;padding:0;font-weight:500;color:var(--ink);appearance:none;-webkit-appearance:none}
+.vsep{width:1px;height:20px;background:var(--line);flex:none}
 
-/* --- lista --- */
-main{padding:12px 12px calc(var(--tab-h) + 24px + env(safe-area-inset-bottom));max-width:640px;margin:0 auto}
-.empty{padding:48px 20px;text-align:center;color:var(--ink-soft)}
+/* lista */
+main{padding:14px 12px calc(var(--tab-h) + 24px + env(safe-area-inset-bottom));max-width:640px;margin:0 auto;overflow-wrap:anywhere}
+.empty{padding:56px 24px;text-align:center;color:var(--ink-soft)}
 .empty strong{display:block;color:var(--ink);font:600 20px var(--f-cond);margin-bottom:6px}
 
-/* --- tételcímke --- */
-.lot{background:var(--card);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;
-  border:1px solid var(--line)}
-.lot.rejected{opacity:.72}
-.lot-img{position:relative;aspect-ratio:16/10;background:var(--line);overflow:hidden}
-.lot-img img{width:100%;height:100%;object-fit:cover;display:block}
-.lot-img.noimg{aspect-ratio:auto;height:74px}
-.stamp{position:absolute;top:10px;right:10px;width:66px;height:66px;border-radius:50%;
-  display:grid;place-items:center;transform:rotate(-12deg);
-  border:3px double var(--ink-soft);color:var(--ink-soft);background:color-mix(in srgb,var(--card) 88%,transparent);
-  font:700 30px/1 var(--f-cond)}
-.stamp small{font-size:13px;font-weight:600;margin-top:-4px;display:block;text-align:center}
-.stamp.hot{border-color:var(--stamp);color:var(--stamp)}
+/* tétel */
+.lot{background:var(--card);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow)}
+.lot.rejected .media img{filter:saturate(.35)}
+.flag{display:flex;align-items:center;gap:6px;background:var(--flag-bg);color:var(--flag);font:600 13.5px var(--f-body);padding:7px 14px}
+.media{position:relative;aspect-ratio:16/10;background:var(--sunk);overflow:hidden}
+.media img{width:100%;height:100%;object-fit:cover;display:block}
+.media.noimg{aspect-ratio:auto;height:64px}
+.pills{position:absolute;left:10px;top:10px;display:flex;gap:6px}
+.pill{background:rgba(20,26,39,.78);color:#fff;font:600 12px/1 var(--f-body);letter-spacing:.2px;padding:6px 8px;border-radius:6px;backdrop-filter:blur(4px)}
+.pill.muted{background:rgba(255,255,255,.88);color:#3d4556}
+.media.noimg .pill{background:var(--card);color:var(--ink-soft);border:1px solid var(--line)}
+.stamp{position:absolute;right:10px;top:10px;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;transform:rotate(-9deg);
+  border:2px solid var(--ink-soft);box-shadow:inset 0 0 0 3px var(--card),inset 0 0 0 4px var(--ink-soft);
+  color:var(--ink-soft);background:var(--card);font:700 25px/1 var(--f-cond)}
 .stamp span{display:block;text-align:center}
-.src{position:absolute;left:0;bottom:0;background:var(--ink);color:var(--paper);font:600 13px var(--f-cond);
-  padding:3px 10px 3px 8px;border-top-right-radius:8px}
-.flag{background:var(--flag);color:#1d1600;font:600 14px var(--f-cond);padding:4px 12px}
-.lot-body{padding:12px 14px 6px}
-.lot h3{margin:0 0 2px;font:600 21px/1.15 var(--f-cond)}
-.sub{margin:0 0 10px;color:var(--ink-soft);font-size:14px}
-.perf{border:0;border-top:2px dashed var(--line);margin:10px -14px}
-.prices{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 10px}
-.prices div{min-width:0}
-.prices b{display:block;font:600 19px/1.1 var(--f-cond);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.prices span{font-size:12px;color:var(--ink-soft)}
-.gainline{margin-top:8px;font:700 24px/1 var(--f-cond);color:var(--gain)}
-.gainline.neg{color:var(--loss)}
-.gainline span{font:500 14px var(--f-body);color:var(--ink-soft);margin-left:6px}
-.why{margin:10px 0 4px}
-.risk{margin:0 0 6px;color:var(--loss);font-size:14px}
-.facts{list-style:none;margin:8px 0 0;padding:0;font-size:14px;color:var(--ink-soft)}
-.facts li{padding:3px 0}
-.facts a{color:var(--ink);text-decoration-color:var(--line);text-underline-offset:3px}
-details.more{margin:6px 0 2px;font-size:14px}
-details.more summary{cursor:pointer;color:var(--ink-soft);padding:4px 0}
-details.more p{margin:6px 0;white-space:pre-line}
-.actions{display:flex;border-top:1px solid var(--line);margin:8px -14px 0}
-.actions button,.actions a{flex:1;background:none;border:0;padding:12px 4px;cursor:pointer;font-size:15px;
-  text-align:center;text-decoration:none;border-right:1px solid var(--line)}
+.stamp small{display:block;font-size:11px;font-weight:600;margin-top:-1px;opacity:.85}
+.stamp.hot{border-color:var(--stamp);color:var(--stamp);box-shadow:inset 0 0 0 3px var(--card),inset 0 0 0 4px var(--stamp)}
+.media.noimg .stamp{top:4px;width:56px;height:56px}
+.body{padding:14px 16px 4px}
+.lot h3{margin:0;font:600 21px/1.15 var(--f-cond)}
+.sub{margin:3px 0 0;color:var(--ink-soft);font-size:13.5px}
+.pricebox{margin:12px 0 0;background:var(--sunk);border-radius:10px;padding:10px 12px}
+.prices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.prices span{display:block;font-size:11.5px;color:var(--ink-faint);margin-bottom:1px}
+.prices b{display:block;font:600 18px/1.1 var(--f-cond);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.gainline{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.gainline b{font:700 22px/1 var(--f-cond);color:var(--gain);font-variant-numeric:tabular-nums;white-space:nowrap}
+.gainline .roi{white-space:nowrap;font:600 12.5px var(--f-body);color:var(--gain);background:var(--gain-bg);padding:3px 7px;border-radius:6px}
+.gainline span.lbl{font-size:13px;color:var(--ink-soft);margin-left:auto;white-space:nowrap}
+.gainline.neg b,.gainline.neg .roi{color:var(--loss)}
+.gainline.neg .roi{background:none;border:1px solid var(--line)}
+.why{margin:12px 0 0;font-size:15px}
+.risk{display:flex;gap:8px;margin:8px 0 0;color:var(--loss);font-size:14px}
+.risk .ic{margin-top:2px}
+.facts{list-style:none;margin:12px 0 0;padding:10px 0 0;border-top:1px dashed var(--line);font-size:14px;color:var(--ink-soft)}
+.facts li{display:flex;gap:10px;padding:4px 0;align-items:flex-start}
+.facts li .ic{margin-top:2px;color:var(--ink-faint)}
+.facts a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.facts .k{color:var(--ink-faint);white-space:nowrap}
+details.more{margin:6px 0 4px;font-size:14px}
+details.more summary{cursor:pointer;color:var(--ink-soft);padding:6px 0;font-weight:500;list-style:none}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::after{content:" ▾";color:var(--ink-faint)}
+details.more[open] summary::after{content:" ▴"}
+details.more p{margin:4px 0 8px;white-space:pre-line;color:var(--ink-soft)}
+.actions{display:grid;grid-template-columns:1.2fr 1fr 1fr 1.3fr;border-top:1px solid var(--line);margin:8px -16px 0}
+.actions button,.actions a{display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:0;height:46px;cursor:pointer;
+  font-size:14px;font-weight:500;color:var(--ink-soft);text-decoration:none;border-right:1px solid var(--line)}
 .actions > :last-child{border-right:0}
-.actions [aria-pressed="true"]{background:color-mix(in srgb,var(--flag) 22%,transparent)}
-.actions .down[aria-pressed="true"]{background:color-mix(in srgb,var(--loss) 18%,transparent)}
-.actions .up[aria-pressed="true"]{background:color-mix(in srgb,var(--gain) 18%,transparent)}
-.savedbox{display:grid;grid-template-columns:1fr 130px;gap:8px;margin:10px 0 4px}
-.savedbox textarea,.savedbox input{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--paper);font-size:14px}
-.savedbox label{font-size:12px;color:var(--ink-soft)}
-.morebtn{display:block;width:100%;padding:12px;border:1px dashed var(--line);border-radius:var(--radius);background:none;cursor:pointer;color:var(--ink-soft)}
+.actions [data-act="save"][aria-pressed="true"]{color:var(--flag)}
+.actions [data-act="save"][aria-pressed="true"] .ic{fill:currentColor}
+.actions .up[aria-pressed="true"]{color:var(--gain)}
+.actions .up[aria-pressed="true"] .ic{fill:var(--gain-bg)}
+.actions .down[aria-pressed="true"]{color:var(--loss)}
+.savedbox{display:grid;grid-template-columns:1fr 128px;gap:10px;margin:12px 0 4px}
+.savedbox textarea,.savedbox input{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--sunk);font-size:14px}
+.savedbox label{display:block;font-size:12px;color:var(--ink-faint);margin-bottom:3px}
+.morebtn{display:block;width:100%;height:46px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);cursor:pointer;color:var(--ink-soft);font-weight:500}
 
-/* --- alsó fülsor --- */
-nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(4,1fr);
+/* álomtelek */
+.attrs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13.5px}
+.attrs div{display:flex;gap:7px;align-items:flex-start;min-width:0;color:var(--ink-soft)}
+.attrs .ic{width:16px;height:16px;margin-top:1px;color:var(--ink-faint)}
+.attrs b{color:var(--ink);font-weight:600}
+.attrs .good b{color:var(--gain)}
+.attrs .bad b{color:var(--loss)}
+.warnline{display:flex;gap:8px;margin:10px 0 0;padding:8px 10px;border-radius:8px;background:var(--flag-bg);color:var(--flag);font-size:13.5px}
+.warnline .ic{margin-top:1px}
+#at-settings{scroll-margin-top:84px}
+.tabhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 12px;color:var(--ink-soft);font-size:13.5px}
+.linkbtn{background:none;border:0;padding:6px 0;color:var(--ink);font-weight:600;cursor:pointer;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.portal{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:13.5px}
+.portal:first-child{border-top:0}
+.portal .bad{color:var(--loss)}
+.portal .ok{color:var(--gain)}
+
+/* alsó menü */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(5,1fr);
   background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-nav.tabs button{background:none;border:0;height:var(--tab-h);cursor:pointer;font:600 16px var(--f-cond);color:var(--ink-soft);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative}
-nav.tabs button[aria-selected="true"]{color:var(--ink)}
-nav.tabs button[aria-selected="true"]::before{content:"";position:absolute;top:0;left:22%;right:22%;height:3px;background:var(--stamp);border-radius:0 0 3px 3px}
-nav.tabs small{font:500 12px var(--f-body)}
+nav.tabs button{background:none;border:0;height:var(--tab-h);cursor:pointer;font:500 11.5px var(--f-body);min-width:0;color:var(--ink-faint);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative}
+nav.tabs button .ic{width:22px;height:22px}
+nav.tabs button[aria-selected="true"]{color:var(--ink);font-weight:600}
+nav.tabs button[aria-selected="true"] .ic{stroke-width:2.2}
+nav.tabs .badge{position:absolute;top:7px;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--stamp);color:#fff;font:600 11px/18px var(--f-body);text-align:center}
+nav.tabs .badge:empty,nav.tabs .badge[data-n="0"]{display:none}
 
-/* --- beállítások --- */
-.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px}
-.panel h2{margin:0 0 4px;font:600 22px var(--f-cond)}
+/* beállítások */
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.panel h2{margin:0 0 4px;font:600 21px var(--f-cond)}
 .panel p.hint{margin:0 0 12px;color:var(--ink-soft);font-size:14px}
-.field{display:grid;grid-template-columns:1fr 140px;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.field{display:grid;grid-template-columns:1fr 132px;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
 .field:first-of-type{border-top:0}
 .field label{font-size:15px}
-.field small{display:block;color:var(--ink-soft);font-size:12px}
-.field input,.field select{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--paper);text-align:right}
+.field small{display:block;color:var(--ink-faint);font-size:12px}
+.field input,.field select{width:100%;height:38px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--sunk);text-align:right;font-variant-numeric:tabular-nums}
 .field.check{grid-template-columns:1fr auto}
-.field.check input{width:22px;height:22px;accent-color:var(--ink)}
-.taglist{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
-.tag{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:3px 4px 3px 10px;font-size:14px;background:var(--paper)}
-.tag button{background:none;border:0;cursor:pointer;padding:0 6px;font-size:16px;color:var(--ink-soft)}
-.addrow{display:flex;gap:6px}
-.addrow .btn{padding:8px 12px;flex:none}
-.addrow input{flex:1;min-width:0;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
-textarea.rolam{width:100%;min-height:150px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-size:14px}
-.btn{display:inline-block;border:0;border-radius:8px;padding:12px 18px;cursor:pointer;font-weight:600;background:var(--ink);color:var(--paper)}
+.field.check input{width:22px;height:22px;accent-color:var(--accent)}
+.taglist{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px}
+.tag{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:8px;padding:3px 2px 3px 10px;font-size:14px;background:var(--sunk)}
+.tag button{background:none;border:0;cursor:pointer;padding:0 6px;font-size:17px;line-height:1;color:var(--ink-faint)}
+.addrow{display:flex;gap:8px}
+.addrow input{flex:1;min-width:0;height:40px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--sunk)}
+.addrow .btn{height:40px;padding:0 14px;flex:none}
+textarea.rolam{width:100%;min-height:160px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--sunk);font-size:14px;line-height:1.5}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:10px;height:44px;padding:0 18px;cursor:pointer;font-weight:600;background:var(--ink);color:var(--paper)}
+.btn[disabled]{opacity:.45;cursor:default}
 .btn.ghost{background:none;color:var(--ink);border:1px solid var(--line)}
 .btn.wide{width:100%}
-.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.runstate{font-size:14px;color:var(--ink-soft);margin:6px 0 0}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.runstate{font-size:14px;color:var(--ink-soft);margin:4px 0 0}
+.diag{list-style:none;padding:0;margin:4px 0 0;font-size:14px}
+.diag li{padding:6px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}
+.diag li:first-child{border-top:0}
 
-/* --- első indítás --- */
-.setup{max-width:520px;margin:0 auto;padding:24px 16px}
-.setup h2{font:700 30px/1.1 var(--f-cond);margin:8px 0}
+/* első indítás */
+.setup{max-width:520px;margin:0 auto;padding:28px 18px}
+.setup h2{font:700 30px/1.1 var(--f-cond);margin:0 0 10px}
 .setup ol{padding-left:20px;color:var(--ink-soft);font-size:15px}
-.setup label{display:block;font-size:14px;margin:12px 0 4px}
-.setup input{width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.setup label{display:block;font-size:13px;color:var(--ink-soft);margin:14px 0 4px}
+.setup input{width:100%;height:46px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
 
-.toast{position:fixed;left:50%;bottom:calc(var(--tab-h) + 16px + env(safe-area-inset-bottom));transform:translateX(-50%);
-  background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:8px;font-size:14px;z-index:9;max-width:90vw;
-  opacity:0;pointer-events:none;transition:opacity .2s}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(var(--tab-h) + 14px + env(safe-area-inset-bottom));margin:0 auto;max-width:420px;
+  background:var(--ink);color:var(--paper);padding:12px 16px;border-radius:10px;font-size:14px;z-index:9;opacity:0;pointer-events:none;transition:opacity .2s}
 .toast.show{opacity:1}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+  <symbol id="i-install" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="M23 6l-9.5 9.5-5-5L1 18M17 6h6v6"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M10 18h4"/></symbol>
+  <symbol id="i-gavel" viewBox="0 0 24 24"><path d="M14 13l-7.5 7.5a2.12 2.12 0 0 1-3-3L11 10M16 16l6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/></symbol>
+  <symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 22v-6M7 16h10l-3.5-4.5H16L12 6l-4 5.5h2.5z"/><path d="M12 6l-2.5-3.5h5z" stroke-linejoin="round"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 2.7l5.66 5.66a8 8 0 1 1-11.31 0z"/></symbol>
+  <symbol id="i-area" viewBox="0 0 24 24"><path d="M3 3h18v18H3zM3 9h18M9 21V9"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></symbol>
+  <symbol id="i-road" viewBox="0 0 24 24"><path d="M4 22L9 2M20 22L15 2M12 6v2M12 12v2M12 18v2"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></symbol>
+</svg>
 <header class="top">
   <div class="top-row">
-    <h1>Árverésfigyelő</h1>
-    <div style="display:flex;gap:14px;align-items:center">
-      <button class="installbtn" id="install" hidden>Telepítés</button>
-      <button class="iconbtn" id="reload" aria-label="Frissítés">⟳</button>
+    <div class="brand"><img src="icon-192.png" alt=""><div style="min-width:0"><h1>Árverésfigyelő</h1><div class="status" id="status">Betöltés…</div></div></div>
+    <div class="top-actions">
+      <button class="hbtn" id="install" hidden><svg class="ic"><use href="#i-install"/></svg>Telepítés</button>
+      <button class="hbtn icononly" id="reload" aria-label="Frissítés"><svg class="ic"><use href="#i-refresh"/></svg></button>
     </div>
   </div>
-  <div class="status" id="status">Betöltés…</div>
 </header>
 
 <div class="filters" id="filters">
-  <label class="sr" for="q">Keresés</label>
-  <input class="search" id="q" type="search" placeholder="Keresés: név, település, megye…" autocomplete="off">
-  <div class="chips" role="group" aria-label="Szűrők">
-    <button class="chip" data-f="onlyRec" aria-pressed="true">Csak ajánlott</button>
+  <div class="searchbox">
+    <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+    <input class="search" id="q" type="search" placeholder="Keresés: név, település, megye" aria-label="Keresés" autocomplete="off">
+  </div>
+  <div class="frow" role="group" aria-label="Szűrők">
+    <div class="seg" role="group" aria-label="Megjelenítés">
+      <button data-seg="1" aria-pressed="true">Ajánlott</button>
+      <button data-seg="0" aria-pressed="false">Összes</button>
+    </div>
+    <span class="vsep"></span>
     <button class="chip" data-src="NAV" aria-pressed="true">NAV</button>
     <button class="chip" data-src="MBVK" aria-pressed="true">MBVK</button>
     <button class="chip" data-src="MNV" aria-pressed="true">MNV</button>
-    <button class="chip" data-f="hidden" aria-pressed="false">Elrejtettek</button>
-    <span class="chip"><label class="sr" for="sort">Rendezés</label>
-      <select id="sort">
+    <button class="chip" data-src="Portál" aria-pressed="true">Portálok</button>
+    <span class="vsep"></span>
+    <label class="chip"><svg class="ic" aria-hidden="true"><use href="#i-sort"/></svg>
+      <select id="sort" aria-label="Rendezés">
         <option value="score">Legjobb elöl</option>
         <option value="gain">Legnagyobb haszon</option>
         <option value="end">Hamarosan zárul</option>
         <option value="new">Legújabb</option>
         <option value="dist">Legközelebbi</option>
-      </select></span>
+      </select></label>
+    <button class="chip toggle" data-f="hidden" aria-pressed="false">Elrejtettek</button>
   </div>
 </div>
 
 <main id="main"></main>
 
 <nav class="tabs" role="tablist">
-  <button role="tab" data-tab="ingo" aria-selected="true">Ingóság<small id="c-ingo"></small></button>
-  <button role="tab" data-tab="ingatlan" aria-selected="false">Ingatlan<small id="c-ingatlan"></small></button>
-  <button role="tab" data-tab="saved" aria-selected="false">Mentett<small id="c-saved"></small></button>
-  <button role="tab" data-tab="settings" aria-selected="false">Beállítások<small>&nbsp;</small></button>
+  <button role="tab" data-tab="ingo" aria-selected="true"><svg class="ic"><use href="#i-box"/></svg>Ingóság<span class="badge" id="c-ingo"></span></button>
+  <button role="tab" data-tab="ingatlan" aria-selected="false"><svg class="ic"><use href="#i-home"/></svg>Ingatlan<span class="badge" id="c-ingatlan"></span></button>
+  <button role="tab" data-tab="alomtelek" aria-selected="false"><svg class="ic"><use href="#i-tree"/></svg>Álomtelek<span class="badge" id="c-alomtelek"></span></button>
+  <button role="tab" data-tab="saved" aria-selected="false"><svg class="ic"><use href="#i-bookmark"/></svg>Mentett<span class="badge" id="c-saved"></span></button>
+  <button role="tab" data-tab="settings" aria-selected="false"><svg class="ic"><use href="#i-sliders"/></svg>Beállítások</button>
 </nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -203,7 +283,7 @@ const S = {
   cfg: JSON.parse(localStorage.getItem(LS) || "null"),
   feed: [], byKey: {}, fb: {}, appFb: [], saved: {}, settings: null, settingsTs: "",
   tab: "ingo", shown: PAGE, q: "", sort: "score", onlyRec: true, hidden: false,
-  src: { NAV: true, MBVK: true, MNV: true }, run: null, loadedAt: null,
+  src: { NAV: true, MBVK: true, MNV: true, "Portál": true }, run: null, loadedAt: null,
 };
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -283,10 +363,12 @@ function mergeFeedback(botFb, appFb) {
 async function load() {
   $("#status").textContent = "Frissítés…";
   try {
-    const [feed, botFb, appFb, saved, stSet, appSet] = await Promise.all([
+    const [feed, botFb, appFb, saved, stSet, appSet, portals] = await Promise.all([
       getRaw("state/feed.json", []), getRaw("state/feedback.json", []), getRaw("app/feedback.json", []),
       getRaw("app/saved.json", {}), getRaw("state/settings.json", null), getRaw("app/settings.json", null),
+      getRaw("state/portal_status.json", {}),
     ]);
+    S.portals = portals || {};
     setFeed(feed); cacheFeed(feed);
     S.appFb = Array.isArray(appFb) ? appFb : [];
     mergeFeedback(botFb, S.appFb);
@@ -330,20 +412,25 @@ function renderStatus() {
 
 /* =================== szűrés / rendezés =================== */
 function pdate(s) { const m = /(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(s || ""); return m ? new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5]) : null; }
+const srcKey = (e) => ["NAV", "MBVK", "MNV"].includes(e.forras) ? e.forras : "Portál";
+const isAtView = (e) => S.tab === "alomtelek" || (S.tab === "saved" && e.at && !e.ai);
+const fbKey = (e) => (isAtView(e) ? "at:" : "") + e.key;
 function listFor(tab) {
   const q = S.q.trim().toLowerCase();
-  let items = S.feed.filter((e) => (tab === "ingatlan") === !!e.ingatlan);
-  items = items.filter((e) => S.src[e.forras] !== false);
-  if (S.onlyRec) items = items.filter((e) => e.ajanlott);
-  if (!S.hidden) items = items.filter((e) => S.fb[e.key] !== 0);
+  let items = S.feed.filter((e) => tab === "alomtelek" ? !!e.at : (!!e.ai && (tab === "ingatlan") === !!e.ingatlan));
+  items = items.filter((e) => S.src[srcKey(e)] !== false);
+  if (S.onlyRec) items = items.filter((e) => tab === "alomtelek" ? e.at.ajanlott : e.ajanlott);
+  if (!S.hidden) items = items.filter((e) => S.fb[fbKey(e)] !== 0);
   if (q) items = items.filter((e) => [e.nev, e.kategoria, e.cim, e.megye, e.leiras, e.ai?.indoklas].join(" ").toLowerCase().includes(q));
   return sortItems(items, S.sort);
 }
 function sortItems(items, how) {
   const now = new Date();
-  const sc = (e) => (e.ai?.erdekesseg || 0) * 1e9 + (e.ai?.haszon_ft || 0);
+  const at = S.tab === "alomtelek";
+  const area = (e) => e.at?.terulet_m2 || e.terulet_m2 || 0;
+  const sc = (e) => at ? (e.at?.pont || 0) * 1e9 + area(e) : (e.ai?.erdekesseg || 0) * 1e9 + (e.ai?.haszon_ft || 0);
   const endKey = (e) => { const d = pdate(e.befejezes); return !d ? 9e15 : d < now ? 8e15 + (now - d) : +d; };
-  const f = { score: (a, b) => sc(b) - sc(a), gain: (a, b) => (b.ai?.haszon_ft || 0) - (a.ai?.haszon_ft || 0),
+  const f = { score: (a, b) => sc(b) - sc(a), gain: (a, b) => at ? area(b) - area(a) : (b.ai?.haszon_ft || 0) - (a.ai?.haszon_ft || 0),
               end: (a, b) => endKey(a) - endKey(b), new: (a, b) => (b.first_seen || "").localeCompare(a.first_seen || ""),
               dist: (a, b) => (a.tav_km ?? 9999) - (b.tav_km ?? 9999) }[how];
   return [...items].sort(f);
@@ -361,77 +448,163 @@ function gcal(title, s, e) {
 }
 function calLink(label, title, s, e) { const u = gcal(title, s, e); return u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(label)}</a>` : esc(label); }
 
+function fmtRange(s) {
+  const all = (s || "").match(/\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/g) || [];
+  if (!all.length) return s || "";
+  const a = pdate(all[0]), b = all[1] ? pdate(all[1]) : null;
+  if (!b) return fdate(all[0]);
+  return a.toDateString() === b.toDateString() ? `${fdate(all[0])}–${b.toTimeString().slice(0, 5)}` : `${fdate(all[0])} – ${fdate(all[1])}`;
+}
+const ic = (n, cls = "") => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+function niceName(s) {
+  s = String(s || "");
+  const letters = s.replace(/[^A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]/g, "");
+  return letters.length > 3 && letters === letters.toUpperCase() ? s.charAt(0) + s.slice(1).toLowerCase() : s;
+}
+const stripEmoji = (s) => String(s || "").replace(/^[^\p{L}\p{N}]+/u, "").trim();
 function card(e) {
   const ai = e.ai || {}; const score = ai.erdekesseg || 0;
-  const saved = !!S.saved[e.key]; const fb = S.fb[e.key];
+  const saved = !!S.saved[e.key]; const fb = S.fb[fbKey(e)];
   const maps = e.maps_url || (e.cim ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(e.cim) : null);
-  const sub = [e.kategoria, e.darabszam, e.allapot, e.terulet, e.tulajdoni_hanyad && `hányad ${e.tulajdoni_hanyad}`].filter(Boolean).map(esc).join(", ");
-  const gain = ai.haszon_ft;
+  const sub = [e.kategoria, e.darabszam, e.allapot, e.terulet, e.tulajdoni_hanyad && `hányad ${e.tulajdoni_hanyad}`].filter(Boolean).map((x) => esc(niceName(x))).join(", ");
+  const gain = ai.haszon_ft, buy = ai.varhato_vetelar_ft || e.min_ar;
+  const roi = gain != null && buy ? Math.round(gain / buy * 100) : null;
   const facts = [];
-  if (e.cim || e.tav_km != null) facts.push(`📍 ${maps ? `<a href="${esc(maps)}" target="_blank" rel="noopener">${esc(e.cim || "térkép")}</a>` : esc(e.cim)}${e.tav_km != null ? `, ${e.tav_km} km (${e.tav_perc} perc)` : ""}`);
-  if (e.megtekintes_ido) facts.push(`👀 Megtekintés: ${calLink(e.megtekintes_ido, "Megtekintés: " + e.nev, e.megtekintes_ido, e)}`);
-  if (e.kezdet && e.befejezes) facts.push(`🔨 Licit: ${calLink(fdate(e.kezdet), "Licit kezdete: " + e.nev, e.kezdet, e)} – ${calLink(fdate(e.befejezes), "Licit vége: " + e.nev, e.befejezes, e)}`);
-  else if (e.befejezes) facts.push(`🔨 Licit zárása: ${calLink(fdate(e.befejezes), "Licit vége: " + e.nev, e.befejezes, e)}`);
-  if (e.licitek_szama) facts.push(`🔔 ${e.licitek_szama} licit eddig`);
-  const extra = (e.extra || []).filter((x) => !/^🎯|^📌/.test(x));
-  const more = [e.leiras && esc(e.leiras), ...extra.map(esc), (e.extra || []).find((x) => /^🎯/.test(x)) && esc((e.extra || []).find((x) => /^🎯/.test(x)))].filter(Boolean);
+  if (e.cim || e.tav_km != null) facts.push([ "pin", `${maps ? `<a href="${esc(maps)}" target="_blank" rel="noopener">${esc(e.cim || "Térkép")}</a>` : esc(e.cim)}${e.tav_km != null ? ` <span class="k">· ${e.tav_km} km, ${e.tav_perc} perc</span>` : ""}` ]);
+  if (e.megtekintes_ido) facts.push([ "eye", `<span class="k">Megtekintés</span> ${calLink(fmtRange(e.megtekintes_ido), "Megtekintés: " + e.nev, e.megtekintes_ido, e)}` ]);
+  if (e.kezdet && e.befejezes) facts.push([ "gavel", `<span class="k">Licit</span> ${calLink(fdate(e.kezdet), "Licit kezdete: " + e.nev, e.kezdet, e)} – ${calLink(fdate(e.befejezes), "Licit vége: " + e.nev, e.befejezes, e)}` ]);
+  else if (e.befejezes) facts.push([ "gavel", `<span class="k">Licit zárása</span> ${calLink(fdate(e.befejezes), "Licit vége: " + e.nev, e.befejezes, e)}` ]);
+  if (e.licitek_szama) facts.push([ "bell", `${e.licitek_szama} licit eddig` ]);
+  const extras = (e.extra || []).map(stripEmoji).filter((x) => x && !/^Kiemelt megye/.test(x));
+  const more = [e.leiras && esc(e.leiras), ...extras.map(esc)].filter(Boolean);
   const sv = S.saved[e.key] || {};
   return `<article class="lot${e.ajanlott ? "" : " rejected"}" data-key="${esc(e.key)}">
-    ${e.kiemelt ? `<div class="flag">Kiemelt megye: ${esc(e.kiemelt)}</div>` : ""}
-    <div class="lot-img${e.image_url ? "" : " noimg"}">
+    ${e.kiemelt ? `<div class="flag">${ic("flag")}Kiemelt megye: ${esc(e.kiemelt)}</div>` : ""}
+    <div class="media${e.image_url ? "" : " noimg"}">
       ${e.image_url ? `<img src="${esc(e.image_url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : ""}
-      <div class="stamp${score >= 8 ? " hot" : ""}" aria-label="AI pontszám ${score} a 10-ből"><span>${score}<small>/10</small></span></div>
-      <span class="src">${esc(e.forras)}${e.ajanlott ? "" : ", nem ajánlott"}</span>
+      <div class="pills"><span class="pill">${esc(e.forras)}</span>${e.ajanlott ? "" : `<span class="pill muted">Nem ajánlott</span>`}</div>
+      <div class="stamp${score >= 8 ? " hot" : ""}" role="img" aria-label="AI értékelés: ${score} a 10-ből"><span>${score}<small>/10</small></span></div>
     </div>
-    <div class="lot-body">
-      <h3>${esc(e.nev)}</h3>
+    <div class="body">
+      <h3>${esc(niceName(e.nev))}</h3>
       ${sub ? `<p class="sub">${sub}</p>` : ""}
-      <div class="prices">
-        <div><b>${ftShort(e.min_ar)}</b><span>minimál ár</span></div>
-        <div><b>${ftShort(ai.varhato_vetelar_ft)}</b><span>várható vételár</span></div>
-        <div><b>${ftShort(ai.piaci_ertek_ft)}</b><span>piaci érték</span></div>
+      <div class="pricebox">
+        <div class="prices">
+          <div><span>Minimál ár</span><b>${ftShort(e.min_ar)}</b></div>
+          <div><span>Várható vételár</span><b>${ftShort(ai.varhato_vetelar_ft)}</b></div>
+          <div><span>Piaci érték</span><b>${ftShort(ai.piaci_ertek_ft)}</b></div>
+        </div>
+        ${gain != null ? `<div class="gainline${gain < 0 ? " neg" : ""}">${ic("trend")}<b>${gain >= 0 ? "+" : ""}${ftShort(gain)}</b>${roi != null ? `<span class="roi">${roi >= 0 ? "+" : ""}${roi}%</span>` : ""}<span class="lbl">várható haszon</span></div>` : ""}
       </div>
-      ${gain != null ? `<div class="gainline${gain < 0 ? " neg" : ""}">${gain >= 0 ? "+" : ""}${ft(gain)}<span>várható haszon</span></div>` : ""}
       ${ai.indoklas ? `<p class="why">${esc(ai.indoklas)}</p>` : ""}
-      ${ai.kockazat ? `<p class="risk">⚠ ${esc(ai.kockazat)}</p>` : ""}
-      <hr class="perf">
-      <ul class="facts">${facts.map((f) => `<li>${f}</li>`).join("")}</ul>
+      ${ai.kockazat ? `<p class="risk">${ic("alert")}<span>${esc(ai.kockazat)}</span></p>` : ""}
+      ${facts.length ? `<ul class="facts">${facts.map(([i, f]) => `<li>${ic(i)}<span>${f}</span></li>`).join("")}</ul>` : ""}
       ${more.length ? `<details class="more"><summary>Részletek</summary>${more.map((m) => `<p>${m}</p>`).join("")}</details>` : ""}
       ${S.tab === "saved" ? `<div class="savedbox">
           <div><label for="n-${esc(e.key)}">Jegyzet</label><textarea id="n-${esc(e.key)}" data-note rows="2">${esc(sv.jegyzet || "")}</textarea></div>
           <div><label for="m-${esc(e.key)}">Max. licit (Ft)</label><input id="m-${esc(e.key)}" data-max inputmode="numeric" value="${sv.max_licit || ""}"></div>
         </div>` : ""}
       <div class="actions">
-        <button data-act="save" aria-pressed="${saved}">${saved ? "★ Mentve" : "☆ Mentés"}</button>
-        <button class="up" data-act="up" aria-pressed="${fb === 1}" aria-label="Tetszik">👍</button>
-        <button class="down" data-act="down" aria-pressed="${fb === 0}" aria-label="Nem érdekel, elrejtés">👎</button>
-        <a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.forras)} oldal</a>
+        <button data-act="save" aria-pressed="${saved}">${ic("star")}${saved ? "Mentve" : "Mentés"}</button>
+        <button class="up" data-act="up" aria-pressed="${fb === 1}" aria-label="Tetszik">${ic("up")}</button>
+        <button class="down" data-act="down" aria-pressed="${fb === 0}" aria-label="Nem érdekel, elrejtés">${ic("down")}</button>
+        <a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.forras)} ${ic("ext")}</a>
+      </div>
+    </div>
+  </article>`;
+}
+
+const EPULET = { lakhato: "lakható", felujitando: "felújítandó", romos: "romos", gazdasagi: "csak gazdasági", nincs: "nincs", ismeretlen: "nem derül ki" };
+const VAN = { van: "van", valoszinu: "valószínű", nincs: "nincs", ismeretlen: "nem derül ki" };
+const UT = { szilard: "szilárd", foldut: "földút", ismeretlen: "nem derül ki" };
+function attr(icon, label, val, cls = "") { return `<div class="${cls}">${ic(icon)}<span>${label}: <b>${esc(val)}</b></span></div>`; }
+function cardAt(e) {
+  const r = e.at || {}; const score = r.pont || 0;
+  const saved = !!S.saved[e.key]; const fb = S.fb[fbKey(e)];
+  const maps = e.maps_url || (e.cim ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(e.cim) : null);
+  const area = r.terulet_m2 || e.terulet_m2;
+  const tone = (v) => v === "van" || v === "lakhato" || v === "felujitando" || v === "szilard" ? "good" : v === "nincs" ? "bad" : "";
+  const facts = [];
+  if (e.cim || e.tav_km != null) facts.push(["pin", `${maps ? `<a href="${esc(maps)}" target="_blank" rel="noopener">${esc(e.cim || "Térkép")}</a>` : esc(e.cim)}${e.tav_km != null ? ` <span class="k">· ${e.tav_km} km Gödtől</span>` : ""}`]);
+  if (e.befejezes) facts.push(["gavel", `<span class="k">Licit vége</span> ${calLink(fdate(e.befejezes), "Licit vége: " + e.nev, e.befejezes, e)}`]);
+  if (e.megtekintes_ido) facts.push(["eye", `<span class="k">Megtekintés</span> ${calLink(fmtRange(e.megtekintes_ido), "Megtekintés: " + e.nev, e.megtekintes_ido, e)}`]);
+  const extras = (e.extra || []).map(stripEmoji).filter((x) => x && !/^Kiemelt megye|^Pontszám/.test(x));
+  const more = [e.leiras && esc(e.leiras), ...extras.map(esc)].filter(Boolean);
+  const sv = S.saved[e.key] || {};
+  return `<article class="lot${r.ajanlott ? "" : " rejected"}" data-key="${esc(e.key)}">
+    <div class="media${e.image_url ? "" : " noimg"}">
+      ${e.image_url ? `<img src="${esc(e.image_url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : ""}
+      <div class="pills"><span class="pill">${esc(e.forras)}</span>${r.ajanlott ? "" : `<span class="pill muted">Nem ajánlott</span>`}</div>
+      <div class="stamp${score >= 8 ? " hot" : ""}" role="img" aria-label="Álomtelek-pont: ${score} a 10-ből"><span>${score}<small>/10</small></span></div>
+    </div>
+    <div class="body">
+      <h3>${esc(niceName(e.nev))}</h3>
+      ${e.megye || e.cim ? `<p class="sub">${esc([e.cim, e.megye].filter(Boolean).join(", "))}</p>` : ""}
+      <div class="pricebox">
+        <div class="prices">
+          <div><span>Ár</span><b>${ftShort(e.min_ar)}</b></div>
+          <div><span>Terület</span><b>${area ? Math.round(area).toLocaleString("hu-HU") + " m²" : "?"}</b></div>
+          <div><span>Ár / m²</span><b>${area && e.min_ar ? Math.round(e.min_ar / area).toLocaleString("hu-HU") + " Ft" : "–"}</b></div>
+        </div>
+        <div class="attrs">
+          ${attr("home", "Épület", EPULET[r.epulet] || "?", tone(r.epulet))}
+          ${attr("drop", "Víz", (VAN[r.viz] || "?") + (r.viz_leiras ? ` (${r.viz_leiras})` : ""), tone(r.viz))}
+          ${attr("bolt", "Villany", VAN[r.villany] || "?", tone(r.villany))}
+          ${attr("road", "Út", UT[r.ut] || "?", tone(r.ut))}
+          ${r.kornyezet ? attr("tree", "Környezet", r.kornyezet) : ""}
+        </div>
+      </div>
+      ${r.termofold_figyelmeztetes ? `<p class="warnline">${ic("alert")}<span>Termőföld is van benne: nem földművesként a megszerezhető terület korlátozott lehet, és elővásárlási jogok lehetnek.</span></p>` : ""}
+      ${r.indoklas ? `<p class="why">${esc(r.indoklas)}</p>` : ""}
+      ${r.kockazat ? `<p class="risk">${ic("alert")}<span>${esc(r.kockazat)}</span></p>` : ""}
+      ${facts.length ? `<ul class="facts">${facts.map(([i, f]) => `<li>${ic(i)}<span>${f}</span></li>`).join("")}</ul>` : ""}
+      ${more.length ? `<details class="more"><summary>Részletek</summary>${more.map((m) => `<p>${m}</p>`).join("")}</details>` : ""}
+      ${S.tab === "saved" ? `<div class="savedbox">
+          <div><label for="n-${esc(e.key)}">Jegyzet</label><textarea id="n-${esc(e.key)}" data-note rows="2">${esc(sv.jegyzet || "")}</textarea></div>
+          <div><label for="m-${esc(e.key)}">Max. ár (Ft)</label><input id="m-${esc(e.key)}" data-max inputmode="numeric" value="${sv.max_licit || ""}"></div>
+        </div>` : ""}
+      <div class="actions">
+        <button data-act="save" aria-pressed="${saved}">${ic("star")}${saved ? "Mentve" : "Mentés"}</button>
+        <button class="up" data-act="up" aria-pressed="${fb === 1}" aria-label="Tetszik">${ic("up")}</button>
+        <button class="down" data-act="down" aria-pressed="${fb === 0}" aria-label="Nem érdekel, elrejtés">${ic("down")}</button>
+        <a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.forras)} ${ic("ext")}</a>
       </div>
     </div>
   </article>`;
 }
 
 /* =================== nézetek =================== */
+function atHead(n) {
+  if (S.tab !== "alomtelek") return "";
+  const urls = (S.settings?.at_kereso_urlek || []).length;
+  return `<div class="tabhead"><span>${n ? `${n} hely` : ""}${urls ? `${n ? ", " : ""}${urls} portál-keresés` : `${n ? ", " : ""}portál-keresés nincs megadva`}</span>
+    <button class="linkbtn" id="goto-at">${ic("sliders")}Álomtelek beállításai</button></div>`;
+}
 function render() {
   renderStatus();
   const counts = { ingo: 0, ingatlan: 0 };
-  for (const e of S.feed) if (e.ajanlott && S.fb[e.key] !== 0) counts[e.ingatlan ? "ingatlan" : "ingo"]++;
-  $("#c-ingo").textContent = counts.ingo; $("#c-ingatlan").textContent = counts.ingatlan;
-  $("#c-saved").textContent = Object.keys(S.saved).length;
+  counts.alomtelek = 0;
+  for (const e of S.feed) {
+    if (e.ai && e.ajanlott && S.fb[e.key] !== 0) counts[e.ingatlan ? "ingatlan" : "ingo"]++;
+    if (e.at?.ajanlott && S.fb["at:" + e.key] !== 0) counts.alomtelek++;
+  }
+  const setB = (id, n) => { const el = $(id); el.textContent = n > 99 ? "99+" : n; el.dataset.n = n; };
+  setB("#c-ingo", counts.ingo); setB("#c-ingatlan", counts.ingatlan); setB("#c-alomtelek", counts.alomtelek); setB("#c-saved", Object.keys(S.saved).length);
   $("#filters").hidden = S.tab === "settings" || S.tab === "saved";
   if (S.tab === "settings") return renderSettings();
   const main = $("#main");
   let items;
   if (S.tab === "saved") items = sortItems(Object.keys(S.saved).map((k) => S.byKey[k]).filter(Boolean), "end");
   else items = listFor(S.tab);
+  $("#sort").options[1].text = S.tab === "alomtelek" ? "Legnagyobb terület" : "Legnagyobb haszon";
   if (!items.length) {
-    main.innerHTML = S.tab === "saved"
+    main.innerHTML = S.tab === "alomtelek" ? atHead(0) + `<div class="empty"><strong>Még nincs álomtelek-jelölt</strong>A bot minden futáskor átnézi az MBVK, NAV és MNV ingatlanokat${(S.settings?.at_kereso_urlek || []).length ? " és a megadott portálokat" : ""}. ${S.onlyRec ? "Az „Összes” gombbal a nem ajánlott helyeket is látod." : ""}</div>` : S.tab === "saved"
       ? `<div class="empty"><strong>Még nincs mentett tétel</strong>A kártyákon a „☆ Mentés” gombbal mentheted el, amit figyelni szeretnél. A bot ezekről külön értesít: új licit, árcsökkenés, holnapi zárás vagy megtekintés.</div>`
       : `<div class="empty"><strong>Nincs a szűrőknek megfelelő tétel</strong>${S.onlyRec ? "Kapcsold ki a „Csak ajánlott” szűrőt, ha az AI által elutasított tételeket is látni szeretnéd." : "Próbálj más keresőszót vagy forrást."}</div>`;
     return;
   }
   const shown = items.slice(0, S.shown);
-  main.innerHTML = shown.map(card).join("") +
+  main.innerHTML = atHead(items.length) + shown.map((e) => isAtView(e) ? cardAt(e) : card(e)).join("") +
     (items.length > shown.length ? `<button class="morebtn" id="more">További ${Math.min(PAGE, items.length - shown.length)} tétel (még ${items.length - shown.length})</button>` : "");
 }
 
@@ -450,6 +623,38 @@ const LISTS = [
   ["tiltott_kategoriak", "Tiltott kategóriák", "Az árverési kategória neve alapján.", "pl. Ruházat"],
   ["tiltott_szavak", "Tiltott szavak", "Egész szóra illeszkedik, ragozva is (póló → pólók).", "pl. körömfesték"],
 ];
+const AT_NUMS = [
+  ["at_max_ar", "Maximális ár", "Ft"], ["at_min_terulet", "Minimális terület", "m²"],
+  ["at_max_tav_km", "Maximális távolság Gödtől", "km, 0 = bárhol"], ["at_min_pont", "Minimális álomtelek-pont", "1–10, ennyitől jön értesítés"],
+];
+const AT_CHECKS = [["at_be", "Álomtelek-keresés bekapcsolva"], ["at_kell_epulet", "Legyen rajta épület (felújítandó is jó)"], ["at_csak_1_1", "Csak teljes tulajdon (1/1)"]];
+const AT_LISTS = [
+  ["at_kereso_urlek", "Keresési linkek", "Állítsd be a keresést az ingatlan.com-on, a Jófogáson vagy bármelyik portálon (pl. eladó ház/tanya, ár, terület, legújabb elöl), és másold ide a találati oldal linkjét. A bot minden futáskor átnézi.", "https://ingatlan.com/lista/…"],
+  ["at_megyek", "Megyék", "Üresen hagyva az egész ország.", "pl. Zala"],
+  ["at_tiltott_szavak", "Kizáró szavak", "Ha a hirdetésben szerepel, kimarad.", "pl. lakottan"],
+];
+function portalStatus() {
+  const p = Object.entries(S.portals || {});
+  if (!p.length) return "";
+  return `<div style="margin-top:10px">${p.map(([u, v]) => `<div class="portal"><span>${esc(v.portal)}</span><span class="${v.allapot.startsWith("ok") ? "ok" : "bad"}">${esc(v.allapot)}${v.talalat ? `, ${v.talalat} hirdetés` : ""}</span></div>`).join("")}</div>`;
+}
+function atSettings(s) {
+  const viz = s.at_viz || "fontos";
+  return `<section class="panel" id="at-settings"><h2>Álomtelek</h2>
+    <p class="hint">Az Álomtelek fül és értesítések beállításai. A mentés gomb lent van.</p>
+    ${AT_NUMS.map(([k, l, u]) => `<div class="field"><label for="f-${k}">${l}<small>${u}</small></label><input id="f-${k}" name="${k}" inputmode="numeric" value="${s[k] ?? ""}"></div>`).join("")}
+    <div class="field"><label for="f-at_viz">Víz (patak, tó)</label><select id="f-at_viz">
+      ${[["kotelezo", "Kötelező"], ["fontos", "Fontos"], ["mindegy", "Mindegy"]].map(([v, l]) => `<option value="${v}" ${viz === v ? "selected" : ""}>${l}</option>`).join("")}
+    </select></div>
+    ${AT_CHECKS.map(([k, l]) => `<div class="field check"><label for="f-${k}">${l}</label><input type="checkbox" id="f-${k}" ${s[k] !== false ? "checked" : ""}></div>`).join("")}
+  </section>
+  ${AT_LISTS.map(([k, t, hnt, ph]) => `<section class="panel" data-list="${k}"><h2>${t}</h2><p class="hint">${hnt}</p>
+      <div class="taglist">${(s[k] || []).map((v, i) => `<span class="tag">${esc(k === "at_kereso_urlek" ? (v.replace(/^https?:\/\/(www\.)?/, "").slice(0, 42) + (v.length > 50 ? "…" : "")) : v)}<button type="button" data-del="${i}" aria-label="Törlés">×</button></span>`).join("")}</div>
+      <div class="addrow"><input placeholder="${ph}" aria-label="${t}: új elem" ${k === "at_kereso_urlek" ? 'inputmode="url"' : ""}><button type="button" class="btn ghost" data-add>Hozzáadás</button></div>
+      ${k === "at_kereso_urlek" ? portalStatus() : ""}</section>`).join("")}
+  <section class="panel"><h2>Milyen helyet keresel?</h2><p class="hint">Az AI ebből értékeli a helyeket. Soronként egy állítás.</p>
+    <textarea class="rolam" id="at_rolam" aria-label="Milyen helyet keresel">${esc((s.at_rolam || []).join("\n"))}</textarea></section>`;
+}
 function renderSettings() {
   const s = S.settings;
   const main = $("#main");
@@ -460,7 +665,7 @@ function renderSettings() {
     <h2>Bot futtatása</h2>
     <p class="runstate">${r ? esc(runText(r)) : "Az utolsó futás nem kérdezhető le."}</p>
     <div class="btnrow">
-      <button class="btn" id="run-full">Futtatás most</button>
+      <button class="btn" id="run-full">${ic("refresh")}Futtatás most</button>
       <button class="btn ghost" id="run-set">Csak a beállítások szinkronja</button>
     </div>
   </section>
@@ -478,6 +683,7 @@ function renderSettings() {
       <div class="addrow"><input placeholder="${ph}" aria-label="${t}: új elem"><button type="button" class="btn ghost" data-add>Hozzáadás</button></div></section>`).join("")}
   <section class="panel"><h2>Rólam</h2><p class="hint">Az AI ebből tudja, mi érdekel. Soronként egy állítás.</p>
     <textarea class="rolam" id="rolam" aria-label="Rólam">${esc((s.rolam || []).join("\n"))}</textarea></section>
+  ${atSettings(s)}
   <button class="btn wide" id="saveset">Beállítások mentése</button>
   <div style="height:14px"></div>
   ${connPanel()}`;
@@ -492,6 +698,10 @@ function collectSettings() {
   for (const [k] of CHECKS) s[k] = $(`#f-${k}`).checked;
   s.kepek = $("#f-kepek").value;
   s.rolam = $("#rolam").value.split("\n").map((x) => x.trim()).filter(Boolean);
+  for (const [k] of AT_NUMS) { const el = $(`#f-${k}`); if (!el) continue; const v = parseInt(String(el.value).replace(/\D/g, "")); s[k] = isNaN(v) ? 0 : v; }
+  for (const [k] of AT_CHECKS) { const el = $(`#f-${k}`); if (el) s[k] = el.checked; }
+  if ($("#f-at_viz")) s.at_viz = $("#f-at_viz").value;
+  if ($("#at_rolam")) s.at_rolam = $("#at_rolam").value.split("\n").map((x) => x.trim()).filter(Boolean);
   return s;
 }
 
@@ -540,9 +750,18 @@ document.addEventListener("click", async (ev) => {
     document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", b === t));
     render(); window.scrollTo(0, 0); return;
   }
+  if (t.dataset.seg != null) {
+    S.onlyRec = t.dataset.seg === "1"; S.shown = PAGE;
+    document.querySelectorAll("[data-seg]").forEach((b) => b.setAttribute("aria-pressed", b === t));
+    return render();
+  }
   if (t.dataset.src) { S.src[t.dataset.src] = !S.src[t.dataset.src]; t.setAttribute("aria-pressed", S.src[t.dataset.src]); S.shown = PAGE; return render(); }
   if (t.dataset.f) { S[t.dataset.f] = !S[t.dataset.f]; t.setAttribute("aria-pressed", S[t.dataset.f]); S.shown = PAGE; return render(); }
   if (t.id === "more") { S.shown += PAGE; return render(); }
+  if (t.id === "goto-at") {
+    S.tab = "settings"; document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === "settings"));
+    render(); setTimeout(() => document.getElementById("at-settings")?.scrollIntoView({ block: "start" }), 50); return;
+  }
   if (t.id === "reload") return load();
   if (t.id === "install" || t.id === "install2") return doInstall();
   const lot = t.closest(".lot");
@@ -554,13 +773,14 @@ document.addEventListener("click", async (ev) => {
       queueWrite("app/saved.json", () => S.saved, "app: mentett tételek");
     } else {
       const val = t.dataset.act === "up" ? 1 : 0;
-      const prev = S.fb[key];
-      S.appFb = S.appFb.filter((f) => f.key !== key);
+      const fk = e ? fbKey(e) : key;
+      const prev = S.fb[fk];
+      S.appFb = S.appFb.filter((f) => f.key !== fk);
       if (prev !== val) {
-        S.appFb.push({ key, ertek: val, ts: new Date().toISOString(), nev: e?.nev, kategoria: e?.kategoria, min_ar: e?.min_ar });
-        S.fb[key] = val;
+        S.appFb.push({ key: fk, ertek: val, ts: new Date().toISOString(), nev: e?.nev, kategoria: isAtView(e || {}) ? "álomtelek" : e?.kategoria, min_ar: e?.min_ar });
+        S.fb[fk] = val;
         toast(val ? "Tetszik – az AI ebből tanul" : "Elrejtve – az AI ebből tanul");
-      } else { delete S.fb[key]; toast("Visszajelzés törölve"); }
+      } else { delete S.fb[fk]; toast("Visszajelzés törölve"); }
       queueWrite("app/feedback.json", () => S.appFb, "app: visszajelzés");
     }
     return render();
@@ -592,7 +812,11 @@ document.addEventListener("click", async (ev) => {
     const k = panel.dataset.list; S.settings = { ...S.settings, ...(document.getElementById("setform") ? collectSettings() : {}) };
     const lst = [...(S.settings[k] || [])];
     if (t.dataset.del != null) lst.splice(+t.dataset.del, 1);
-    if (t.dataset.add != null) { const v = panel.querySelector("input").value.trim(); if (v && !lst.some((x) => x.toLowerCase() === v.toLowerCase())) lst.push(v); }
+    if (t.dataset.add != null) {
+      const v = panel.querySelector("input").value.trim();
+      if (k === "at_kereso_urlek" && v && !/^https?:\/\//.test(v)) { toast("Teljes linket adj meg (https://…)"); return; }
+      if (v && !lst.some((x) => x.toLowerCase() === v.toLowerCase())) lst.push(v);
+    }
     S.settings[k] = lst; renderSettings();
     toast("Ne felejtsd el menteni");
     return;
@@ -638,10 +862,10 @@ async function doInstall() {
 function diagItems() {
   const yn = (v) => v === true ? "igen" : v === false ? "nem" : "nem ismert";
   return [
-    `Most telepített appként fut: <b>${yn(INST.standalone)}</b>`,
-    `A Chrome szerint telepítve van: <b>${yn(INST.installed)}</b>`,
-    `A Chrome most felkínálja a telepítést: <b>${yn(!!INST.evt)}</b>`,
-    `Offline működés (service worker) aktív: <b>${yn(INST.sw)}</b>`,
+    `<span>Telepített appként fut</span><b>${yn(INST.standalone)}</b>`,
+    `<span>A Chrome szerint telepítve van</span><b>${yn(INST.installed)}</b>`,
+    `<span>Telepítés most elérhető</span><b>${yn(!!INST.evt)}</b>`,
+    `<span>Offline működés aktív</span><b>${yn(INST.sw)}</b>`,
   ].map((x) => `<li>${x}</li>`).join("");
 }
 function installPanel() {
@@ -649,7 +873,7 @@ function installPanel() {
   return `<section class="panel"><h2>Telepítés</h2>
     <p class="hint">${INST.evt ? "A telepítés elérhető." : INST.installed ? "A Chrome szerint már telepítve van. Keresd az app-listában „Árverés” néven. Ha nincs ott: Beállítások → Alkalmazások → Chrome → Egyéb engedélyek → Kezdőképernyő-parancsikonok → Engedélyezés, majd töröld az „Árverés” appot és telepítsd újra." : "A Chrome most nem kínálja fel. Frissítsd az oldalt, várj pár másodpercet, és nézd meg újra."}</p>
     <ul class="diag" id="diag">${diagItems()}</ul>
-    <div class="btnrow"><button class="btn" id="install2" ${INST.evt ? "" : "disabled"}>App telepítése</button></div></section>`;
+    <div class="btnrow"><button class="btn" id="install2" ${INST.evt ? "" : "disabled"}>${ic("install")}App telepítése</button></div></section>`;
 }
 
 /* =================== indulás =================== */
