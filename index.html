@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1F2A44">
+<title>Árverésfigyelő</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#ECEEEA; --card:#FBFBF9; --ink:#1F2A44; --ink-soft:#5B6579; --line:#D3D7D0;
+  --stamp:#B4232A; --gain:#2E6B3F; --flag:#B88A12; --loss:#8A3B2E;
+  --head:#1F2A44; --head-ink:#ECEEEA;
+  --radius:10px; --tab-h:64px;
+  --f-body:"Barlow",system-ui,sans-serif; --f-cond:"Barlow Condensed","Arial Narrow",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --paper:#161C2A; --card:#1F2738; --ink:#E7EAF0; --ink-soft:#9AA3B5; --line:#30394D;
+         --stamp:#E0565C; --gain:#6BBF83; --flag:#E2B544; --loss:#E08A73; --head:#26324F; --head-ink:#E7EAF0; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.45 var(--f-body);-webkit-text-size-adjust:100%}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--stamp);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* --- fejléc --- */
+header.top{position:sticky;top:0;z-index:5;background:var(--head);color:var(--head-ink);
+  padding:calc(env(safe-area-inset-top) + 10px) 16px 10px}
+.top-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.top h1{margin:0;font:700 26px/1 var(--f-cond);letter-spacing:.2px}
+.top .status{font-size:13px;opacity:.75}
+.iconbtn{background:none;border:0;padding:8px;margin:-8px;cursor:pointer;color:inherit;font-size:20px;line-height:1}
+
+/* --- szűrők --- */
+.filters{position:sticky;top:calc(env(safe-area-inset-top) + 56px);z-index:4;background:var(--paper);
+  padding:10px 16px 8px;border-bottom:1px solid var(--line)}
+.search{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-top:8px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;font-size:14px;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chip select{border:0;background:none;padding:0}
+
+/* --- lista --- */
+main{padding:12px 12px calc(var(--tab-h) + 24px + env(safe-area-inset-bottom));max-width:640px;margin:0 auto}
+.empty{padding:48px 20px;text-align:center;color:var(--ink-soft)}
+.empty strong{display:block;color:var(--ink);font:600 20px var(--f-cond);margin-bottom:6px}
+
+/* --- tételcímke --- */
+.lot{background:var(--card);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;
+  border:1px solid var(--line)}
+.lot.rejected{opacity:.72}
+.lot-img{position:relative;aspect-ratio:16/10;background:var(--line);overflow:hidden}
+.lot-img img{width:100%;height:100%;object-fit:cover;display:block}
+.lot-img.noimg{aspect-ratio:auto;height:74px}
+.stamp{position:absolute;top:10px;right:10px;width:66px;height:66px;border-radius:50%;
+  display:grid;place-items:center;transform:rotate(-12deg);
+  border:3px double var(--ink-soft);color:var(--ink-soft);background:color-mix(in srgb,var(--card) 88%,transparent);
+  font:700 30px/1 var(--f-cond)}
+.stamp small{font-size:13px;font-weight:600;margin-top:-4px;display:block;text-align:center}
+.stamp.hot{border-color:var(--stamp);color:var(--stamp)}
+.stamp span{display:block;text-align:center}
+.src{position:absolute;left:0;bottom:0;background:var(--ink);color:var(--paper);font:600 13px var(--f-cond);
+  padding:3px 10px 3px 8px;border-top-right-radius:8px}
+.flag{background:var(--flag);color:#1d1600;font:600 14px var(--f-cond);padding:4px 12px}
+.lot-body{padding:12px 14px 6px}
+.lot h3{margin:0 0 2px;font:600 21px/1.15 var(--f-cond)}
+.sub{margin:0 0 10px;color:var(--ink-soft);font-size:14px}
+.perf{border:0;border-top:2px dashed var(--line);margin:10px -14px}
+.prices{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 10px}
+.prices div{min-width:0}
+.prices b{display:block;font:600 19px/1.1 var(--f-cond);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prices span{font-size:12px;color:var(--ink-soft)}
+.gainline{margin-top:8px;font:700 24px/1 var(--f-cond);color:var(--gain)}
+.gainline.neg{color:var(--loss)}
+.gainline span{font:500 14px var(--f-body);color:var(--ink-soft);margin-left:6px}
+.why{margin:10px 0 4px}
+.risk{margin:0 0 6px;color:var(--loss);font-size:14px}
+.facts{list-style:none;margin:8px 0 0;padding:0;font-size:14px;color:var(--ink-soft)}
+.facts li{padding:3px 0}
+.facts a{color:var(--ink);text-decoration-color:var(--line);text-underline-offset:3px}
+details.more{margin:6px 0 2px;font-size:14px}
+details.more summary{cursor:pointer;color:var(--ink-soft);padding:4px 0}
+details.more p{margin:6px 0;white-space:pre-line}
+.actions{display:flex;border-top:1px solid var(--line);margin:8px -14px 0}
+.actions button,.actions a{flex:1;background:none;border:0;padding:12px 4px;cursor:pointer;font-size:15px;
+  text-align:center;text-decoration:none;border-right:1px solid var(--line)}
+.actions > :last-child{border-right:0}
+.actions [aria-pressed="true"]{background:color-mix(in srgb,var(--flag) 22%,transparent)}
+.actions .down[aria-pressed="true"]{background:color-mix(in srgb,var(--loss) 18%,transparent)}
+.actions .up[aria-pressed="true"]{background:color-mix(in srgb,var(--gain) 18%,transparent)}
+.savedbox{display:grid;grid-template-columns:1fr 130px;gap:8px;margin:10px 0 4px}
+.savedbox textarea,.savedbox input{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--paper);font-size:14px}
+.savedbox label{font-size:12px;color:var(--ink-soft)}
+.morebtn{display:block;width:100%;padding:12px;border:1px dashed var(--line);border-radius:var(--radius);background:none;cursor:pointer;color:var(--ink-soft)}
+
+/* --- alsó fülsor --- */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(4,1fr);
+  background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{background:none;border:0;height:var(--tab-h);cursor:pointer;font:600 16px var(--f-cond);color:var(--ink-soft);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative}
+nav.tabs button[aria-selected="true"]{color:var(--ink)}
+nav.tabs button[aria-selected="true"]::before{content:"";position:absolute;top:0;left:22%;right:22%;height:3px;background:var(--stamp);border-radius:0 0 3px 3px}
+nav.tabs small{font:500 12px var(--f-body)}
+
+/* --- beállítások --- */
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px}
+.panel h2{margin:0 0 4px;font:600 22px var(--f-cond)}
+.panel p.hint{margin:0 0 12px;color:var(--ink-soft);font-size:14px}
+.field{display:grid;grid-template-columns:1fr 140px;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.field:first-of-type{border-top:0}
+.field label{font-size:15px}
+.field small{display:block;color:var(--ink-soft);font-size:12px}
+.field input,.field select{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--paper);text-align:right}
+.field.check{grid-template-columns:1fr auto}
+.field.check input{width:22px;height:22px;accent-color:var(--ink)}
+.taglist{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.tag{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:3px 4px 3px 10px;font-size:14px;background:var(--paper)}
+.tag button{background:none;border:0;cursor:pointer;padding:0 6px;font-size:16px;color:var(--ink-soft)}
+.addrow{display:flex;gap:6px}
+.addrow .btn{padding:8px 12px;flex:none}
+.addrow input{flex:1;min-width:0;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+textarea.rolam{width:100%;min-height:150px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-size:14px}
+.btn{display:inline-block;border:0;border-radius:8px;padding:12px 18px;cursor:pointer;font-weight:600;background:var(--ink);color:var(--paper)}
+.btn.ghost{background:none;color:var(--ink);border:1px solid var(--line)}
+.btn.wide{width:100%}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.runstate{font-size:14px;color:var(--ink-soft);margin:6px 0 0}
+
+/* --- első indítás --- */
+.setup{max-width:520px;margin:0 auto;padding:24px 16px}
+.setup h2{font:700 30px/1.1 var(--f-cond);margin:8px 0}
+.setup ol{padding-left:20px;color:var(--ink-soft);font-size:15px}
+.setup label{display:block;font-size:14px;margin:12px 0 4px}
+.setup input{width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+
+.toast{position:fixed;left:50%;bottom:calc(var(--tab-h) + 16px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:8px;font-size:14px;z-index:9;max-width:90vw;
+  opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-row">
+    <h1>Árverésfigyelő</h1>
+    <button class="iconbtn" id="reload" aria-label="Frissítés">⟳</button>
+  </div>
+  <div class="status" id="status">Betöltés…</div>
+</header>
+
+<div class="filters" id="filters">
+  <label class="sr" for="q">Keresés</label>
+  <input class="search" id="q" type="search" placeholder="Keresés: név, település, megye…" autocomplete="off">
+  <div class="chips" role="group" aria-label="Szűrők">
+    <button class="chip" data-f="onlyRec" aria-pressed="true">Csak ajánlott</button>
+    <button class="chip" data-src="NAV" aria-pressed="true">NAV</button>
+    <button class="chip" data-src="MBVK" aria-pressed="true">MBVK</button>
+    <button class="chip" data-src="MNV" aria-pressed="true">MNV</button>
+    <button class="chip" data-f="hidden" aria-pressed="false">Elrejtettek</button>
+    <span class="chip"><label class="sr" for="sort">Rendezés</label>
+      <select id="sort">
+        <option value="score">Legjobb elöl</option>
+        <option value="gain">Legnagyobb haszon</option>
+        <option value="end">Hamarosan zárul</option>
+        <option value="new">Legújabb</option>
+        <option value="dist">Legközelebbi</option>
+      </select></span>
+  </div>
+</div>
+
+<main id="main"></main>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="ingo" aria-selected="true">Ingóság<small id="c-ingo"></small></button>
+  <button role="tab" data-tab="ingatlan" aria-selected="false">Ingatlan<small id="c-ingatlan"></small></button>
+  <button role="tab" data-tab="saved" aria-selected="false">Mentett<small id="c-saved"></small></button>
+  <button role="tab" data-tab="settings" aria-selected="false">Beállítások<small>&nbsp;</small></button>
+</nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* =================== állapot =================== */
+const LS = "arveres-cfg";
+const PAGE = 25;
+const S = {
+  cfg: JSON.parse(localStorage.getItem(LS) || "null"),
+  feed: [], byKey: {}, fb: {}, appFb: [], saved: {}, settings: null, settingsTs: "",
+  tab: "ingo", shown: PAGE, q: "", sort: "score", onlyRec: true, hidden: false,
+  src: { NAV: true, MBVK: true, MNV: true }, run: null, loadedAt: null,
+};
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const ftShort = (n) => (n == null) ? "–" : Math.abs(n) >= 1e6 ? (n / 1e6).toLocaleString("hu-HU", { maximumFractionDigits: n % 1e6 ? 2 : 0 }) + " M Ft" : ft(n);
+const ft = (n) => (n || n === 0) ? Math.round(n).toLocaleString("hu-HU").replace(/ /g, " ") + " Ft" : "–";
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2600); }
+
+/* =================== GitHub API =================== */
+const api = (p) => `https://api.github.com/repos/${S.cfg.owner}/${S.cfg.repo}${p}`;
+const hdr = (raw) => ({ Authorization: `Bearer ${S.cfg.token}`, Accept: raw ? "application/vnd.github.raw+json" : "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" });
+
+async function ghErr(res) {
+  if (res.status === 401) return "A token érvénytelen vagy lejárt. Adj meg újat a Beállításokban.";
+  if (res.status === 403) return "A tokennek nincs jogosultsága ehhez (Contents és Actions: Read and write kell).";
+  if (res.status === 404) return "A repó vagy a fájl nem található. Ellenőrizd a repó nevét.";
+  return `GitHub hiba (${res.status}).`;
+}
+async function getRaw(path, fallback) {
+  const res = await fetch(api(`/contents/${path}?ref=${S.cfg.branch}`) + `&t=${Date.now()}`, { headers: hdr(true), cache: "no-store" });
+  if (res.status === 404) return fallback;
+  if (!res.ok) throw new Error(await ghErr(res));
+  const txt = await res.text();
+  try { return JSON.parse(txt); } catch { return fallback; }
+}
+async function getSha(path) {
+  const res = await fetch(api(`/contents/${path}?ref=${S.cfg.branch}`) + `&t=${Date.now()}`, { headers: hdr(false), cache: "no-store" });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(await ghErr(res));
+  return (await res.json()).sha;
+}
+const b64 = (str) => { const bytes = new TextEncoder().encode(str); let bin = ""; bytes.forEach((b) => bin += String.fromCharCode(b)); return btoa(bin); };
+async function putJson(path, obj, message) {
+  for (let i = 0; i < 3; i++) {
+    const sha = await getSha(path);
+    const res = await fetch(api(`/contents/${path}`), {
+      method: "PUT", headers: { ...hdr(false), "Content-Type": "application/json" },
+      body: JSON.stringify({ message, branch: S.cfg.branch, content: b64(JSON.stringify(obj, null, 1)), ...(sha ? { sha } : {}) }),
+    });
+    if (res.ok) return true;
+    if (res.status !== 409 && res.status !== 422) throw new Error(await ghErr(res));
+  }
+  throw new Error("Mentési ütközés – próbáld újra.");
+}
+
+/* írási sor: gyors egymás utáni kattintások egy commitba */
+const pending = {};
+function queueWrite(path, getter, msg) {
+  pending[path] = { getter, msg };
+  clearTimeout(queueWrite.t);
+  queueWrite.t = setTimeout(flush, 1800);
+}
+async function flush() {
+  for (const [path, { getter, msg }] of Object.entries(pending)) {
+    delete pending[path];
+    try { await putJson(path, getter(), msg); } catch (e) { toast(e.message); }
+  }
+}
+window.addEventListener("pagehide", () => { if (Object.keys(pending).length) flush(); });
+
+/* =================== betöltés =================== */
+async function cacheFeed(data) { try { const c = await caches.open("arveres-data"); await c.put("feed", new Response(JSON.stringify(data))); } catch {} }
+async function cachedFeed() { try { const c = await caches.open("arveres-data"); const r = await c.match("feed"); return r ? r.json() : null; } catch { return null; } }
+
+function setFeed(feed) {
+  S.feed = Array.isArray(feed) ? feed : [];
+  S.byKey = Object.fromEntries(S.feed.map((e) => [e.key, e]));
+}
+function mergeFeedback(botFb, appFb) {
+  const m = {};
+  for (const f of [...(botFb || []), ...(appFb || [])]) {
+    if (!f || !f.key) continue;
+    if (!m[f.key] || (f.ts || "") >= (m[f.key].ts || "")) m[f.key] = f;
+  }
+  S.fb = Object.fromEntries(Object.entries(m).map(([k, f]) => [k, f.ertek]));
+}
+
+async function load() {
+  $("#status").textContent = "Frissítés…";
+  try {
+    const [feed, botFb, appFb, saved, stSet, appSet] = await Promise.all([
+      getRaw("state/feed.json", []), getRaw("state/feedback.json", []), getRaw("app/feedback.json", []),
+      getRaw("app/saved.json", {}), getRaw("state/settings.json", null), getRaw("app/settings.json", null),
+    ]);
+    setFeed(feed); cacheFeed(feed);
+    S.appFb = Array.isArray(appFb) ? appFb : [];
+    mergeFeedback(botFb, S.appFb);
+    S.saved = saved && typeof saved === "object" ? saved : {};
+    const stTs = stSet?.updated_at || "", apTs = appSet?.updated_at || "";
+    if (appSet?.settings && apTs > stTs) { S.settings = { ...(stSet || {}), ...appSet.settings }; S.settingsTs = apTs; S.settingsPending = true; }
+    else { S.settings = stSet; S.settingsTs = stTs; S.settingsPending = false; }
+    S.loadedAt = new Date();
+    loadRun();
+    render();
+  } catch (e) {
+    $("#status").textContent = e.message;
+    toast(e.message);
+  }
+}
+async function loadRun() {
+  try {
+    const res = await fetch(api(`/actions/workflows/${S.cfg.workflow}/runs?per_page=1&t=${Date.now()}`), { headers: hdr(false) });
+    if (!res.ok) return;
+    S.run = (await res.json()).workflow_runs?.[0] || null;
+    renderStatus();
+    if (S.tab === "settings") renderSettings();
+  } catch {}
+}
+function relTime(d) {
+  const m = Math.round((Date.now() - new Date(d)) / 60000);
+  if (m < 1) return "most";
+  if (m < 60) return `${m} perce`;
+  if (m < 60 * 24) return `${Math.round(m / 60)} órája`;
+  return `${Math.round(m / 1440)} napja`;
+}
+function runText(r) {
+  if (!r) return "";
+  if (r.status !== "completed") return `A bot most fut (${relTime(r.created_at)} indult)`;
+  return `Utolsó futás ${relTime(r.updated_at)}${r.conclusion === "success" ? "" : ", hibával zárult"}`;
+}
+function renderStatus() {
+  const n = S.feed.filter((e) => e.ajanlott).length;
+  $("#status").textContent = `${n} ajánlott tétel` + (S.run ? `. ${runText(S.run)}` : "");
+}
+
+/* =================== szűrés / rendezés =================== */
+function pdate(s) { const m = /(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(s || ""); return m ? new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5]) : null; }
+function listFor(tab) {
+  const q = S.q.trim().toLowerCase();
+  let items = S.feed.filter((e) => (tab === "ingatlan") === !!e.ingatlan);
+  items = items.filter((e) => S.src[e.forras] !== false);
+  if (S.onlyRec) items = items.filter((e) => e.ajanlott);
+  if (!S.hidden) items = items.filter((e) => S.fb[e.key] !== 0);
+  if (q) items = items.filter((e) => [e.nev, e.kategoria, e.cim, e.megye, e.leiras, e.ai?.indoklas].join(" ").toLowerCase().includes(q));
+  return sortItems(items, S.sort);
+}
+function sortItems(items, how) {
+  const now = new Date();
+  const sc = (e) => (e.ai?.erdekesseg || 0) * 1e9 + (e.ai?.haszon_ft || 0);
+  const endKey = (e) => { const d = pdate(e.befejezes); return !d ? 9e15 : d < now ? 8e15 + (now - d) : +d; };
+  const f = { score: (a, b) => sc(b) - sc(a), gain: (a, b) => (b.ai?.haszon_ft || 0) - (a.ai?.haszon_ft || 0),
+              end: (a, b) => endKey(a) - endKey(b), new: (a, b) => (b.first_seen || "").localeCompare(a.first_seen || ""),
+              dist: (a, b) => (a.tav_km ?? 9999) - (b.tav_km ?? 9999) }[how];
+  return [...items].sort(f);
+}
+
+/* =================== kártya =================== */
+function fdate(s) { const d = pdate(s); return d ? d.toLocaleDateString("hu-HU", { month: "2-digit", day: "2-digit" }).replace(/\s/g, "") + " " + d.toTimeString().slice(0, 5) : esc(s || "?"); }
+function gcal(title, s, e) {
+  const fmt = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}00`;
+  const all = (s || "").match(/\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/g) || [];
+  if (!all.length) return null;
+  const a = pdate(all[0]); const b = all[1] ? pdate(all[1]) : new Date(+a + 3600e3);
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${fmt(a)}/${fmt(b)}&ctz=Europe/Budapest` +
+    (e.cim ? `&location=${encodeURIComponent(e.cim)}` : "") + (e.url ? `&details=${encodeURIComponent(e.url)}` : "");
+}
+function calLink(label, title, s, e) { const u = gcal(title, s, e); return u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(label)}</a>` : esc(label); }
+
+function card(e) {
+  const ai = e.ai || {}; const score = ai.erdekesseg || 0;
+  const saved = !!S.saved[e.key]; const fb = S.fb[e.key];
+  const maps = e.maps_url || (e.cim ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(e.cim) : null);
+  const sub = [e.kategoria, e.darabszam, e.allapot, e.terulet, e.tulajdoni_hanyad && `hányad ${e.tulajdoni_hanyad}`].filter(Boolean).map(esc).join(", ");
+  const gain = ai.haszon_ft;
+  const facts = [];
+  if (e.cim || e.tav_km != null) facts.push(`📍 ${maps ? `<a href="${esc(maps)}" target="_blank" rel="noopener">${esc(e.cim || "térkép")}</a>` : esc(e.cim)}${e.tav_km != null ? `, ${e.tav_km} km (${e.tav_perc} perc)` : ""}`);
+  if (e.megtekintes_ido) facts.push(`👀 Megtekintés: ${calLink(e.megtekintes_ido, "Megtekintés: " + e.nev, e.megtekintes_ido, e)}`);
+  if (e.kezdet && e.befejezes) facts.push(`🔨 Licit: ${calLink(fdate(e.kezdet), "Licit kezdete: " + e.nev, e.kezdet, e)} – ${calLink(fdate(e.befejezes), "Licit vége: " + e.nev, e.befejezes, e)}`);
+  else if (e.befejezes) facts.push(`🔨 Licit zárása: ${calLink(fdate(e.befejezes), "Licit vége: " + e.nev, e.befejezes, e)}`);
+  if (e.licitek_szama) facts.push(`🔔 ${e.licitek_szama} licit eddig`);
+  const extra = (e.extra || []).filter((x) => !/^🎯|^📌/.test(x));
+  const more = [e.leiras && esc(e.leiras), ...extra.map(esc), (e.extra || []).find((x) => /^🎯/.test(x)) && esc((e.extra || []).find((x) => /^🎯/.test(x)))].filter(Boolean);
+  const sv = S.saved[e.key] || {};
+  return `<article class="lot${e.ajanlott ? "" : " rejected"}" data-key="${esc(e.key)}">
+    ${e.kiemelt ? `<div class="flag">Kiemelt megye: ${esc(e.kiemelt)}</div>` : ""}
+    <div class="lot-img${e.image_url ? "" : " noimg"}">
+      ${e.image_url ? `<img src="${esc(e.image_url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : ""}
+      <div class="stamp${score >= 8 ? " hot" : ""}" aria-label="AI pontszám ${score} a 10-ből"><span>${score}<small>/10</small></span></div>
+      <span class="src">${esc(e.forras)}${e.ajanlott ? "" : ", nem ajánlott"}</span>
+    </div>
+    <div class="lot-body">
+      <h3>${esc(e.nev)}</h3>
+      ${sub ? `<p class="sub">${sub}</p>` : ""}
+      <div class="prices">
+        <div><b>${ftShort(e.min_ar)}</b><span>minimál ár</span></div>
+        <div><b>${ftShort(ai.varhato_vetelar_ft)}</b><span>várható vételár</span></div>
+        <div><b>${ftShort(ai.piaci_ertek_ft)}</b><span>piaci érték</span></div>
+      </div>
+      ${gain != null ? `<div class="gainline${gain < 0 ? " neg" : ""}">${gain >= 0 ? "+" : ""}${ft(gain)}<span>várható haszon</span></div>` : ""}
+      ${ai.indoklas ? `<p class="why">${esc(ai.indoklas)}</p>` : ""}
+      ${ai.kockazat ? `<p class="risk">⚠ ${esc(ai.kockazat)}</p>` : ""}
+      <hr class="perf">
+      <ul class="facts">${facts.map((f) => `<li>${f}</li>`).join("")}</ul>
+      ${more.length ? `<details class="more"><summary>Részletek</summary>${more.map((m) => `<p>${m}</p>`).join("")}</details>` : ""}
+      ${S.tab === "saved" ? `<div class="savedbox">
+          <div><label for="n-${esc(e.key)}">Jegyzet</label><textarea id="n-${esc(e.key)}" data-note rows="2">${esc(sv.jegyzet || "")}</textarea></div>
+          <div><label for="m-${esc(e.key)}">Max. licit (Ft)</label><input id="m-${esc(e.key)}" data-max inputmode="numeric" value="${sv.max_licit || ""}"></div>
+        </div>` : ""}
+      <div class="actions">
+        <button data-act="save" aria-pressed="${saved}">${saved ? "★ Mentve" : "☆ Mentés"}</button>
+        <button class="up" data-act="up" aria-pressed="${fb === 1}" aria-label="Tetszik">👍</button>
+        <button class="down" data-act="down" aria-pressed="${fb === 0}" aria-label="Nem érdekel, elrejtés">👎</button>
+        <a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.forras)} oldal</a>
+      </div>
+    </div>
+  </article>`;
+}
+
+/* =================== nézetek =================== */
+function render() {
+  renderStatus();
+  const counts = { ingo: 0, ingatlan: 0 };
+  for (const e of S.feed) if (e.ajanlott && S.fb[e.key] !== 0) counts[e.ingatlan ? "ingatlan" : "ingo"]++;
+  $("#c-ingo").textContent = counts.ingo; $("#c-ingatlan").textContent = counts.ingatlan;
+  $("#c-saved").textContent = Object.keys(S.saved).length;
+  $("#filters").hidden = S.tab === "settings" || S.tab === "saved";
+  if (S.tab === "settings") return renderSettings();
+  const main = $("#main");
+  let items;
+  if (S.tab === "saved") items = sortItems(Object.keys(S.saved).map((k) => S.byKey[k]).filter(Boolean), "end");
+  else items = listFor(S.tab);
+  if (!items.length) {
+    main.innerHTML = S.tab === "saved"
+      ? `<div class="empty"><strong>Még nincs mentett tétel</strong>A kártyákon a „☆ Mentés” gombbal mentheted el, amit figyelni szeretnél. A bot ezekről külön értesít: új licit, árcsökkenés, holnapi zárás vagy megtekintés.</div>`
+      : `<div class="empty"><strong>Nincs a szűrőknek megfelelő tétel</strong>${S.onlyRec ? "Kapcsold ki a „Csak ajánlott” szűrőt, ha az AI által elutasított tételeket is látni szeretnéd." : "Próbálj más keresőszót vagy forrást."}</div>`;
+    return;
+  }
+  const shown = items.slice(0, S.shown);
+  main.innerHTML = shown.map(card).join("") +
+    (items.length > shown.length ? `<button class="morebtn" id="more">További ${Math.min(PAGE, items.length - shown.length)} tétel (még ${items.length - shown.length})</button>` : "");
+}
+
+const NUMS = [
+  ["min_haszon", "Minimális várható haszon", "Ft"], ["min_arany", "Minimális haszon a vételár arányában", "%"],
+  ["min_erdekesseg", "Ennyi pont felett mindig jön", "1–10"], ["max_becsertek", "Ingóság becsérték plafon", "Ft"],
+  ["max_mbvk_ingatlan", "MBVK ingatlan árplafon", "Ft"], ["max_mnv_ingatlan", "MNV ingatlan árplafon", "Ft"],
+  ["ingatlan_min_score", "Ingatlan minimális pontszám", "1–5"],
+];
+const CHECKS = [
+  ["mbvk", "MBVK figyelése"], ["mbvk_csak_bekoltozheto", "MBVK: csak beköltözhető ingatlan"],
+  ["csak_1_1", "Csak teljes tulajdon (1/1)"], ["szunet", "Szünet: a bot nem küld semmit"],
+];
+const LISTS = [
+  ["kiemelt_megyek", "Kiemelt megyék", "Innen minden ingatlan jön, ár- és AI-szűrés nélkül.", "pl. Somogy"],
+  ["tiltott_kategoriak", "Tiltott kategóriák", "Az árverési kategória neve alapján.", "pl. Ruházat"],
+  ["tiltott_szavak", "Tiltott szavak", "Egész szóra illeszkedik, ragozva is (póló → pólók).", "pl. körömfesték"],
+];
+function renderSettings() {
+  const s = S.settings;
+  const main = $("#main");
+  if (!s) { main.innerHTML = `<div class="empty"><strong>A beállítások még nem tölthetők be</strong>A bot első futása után jelennek meg.</div>` + connPanel(); return; }
+  const r = S.run;
+  main.innerHTML = `
+  <section class="panel">
+    <h2>Bot futtatása</h2>
+    <p class="runstate">${r ? esc(runText(r)) : "Az utolsó futás nem kérdezhető le."}</p>
+    <div class="btnrow">
+      <button class="btn" id="run-full">Futtatás most</button>
+      <button class="btn ghost" id="run-set">Csak a beállítások szinkronja</button>
+    </div>
+  </section>
+  <form class="panel" id="setform">
+    <h2>Szűrés</h2>
+    <p class="hint">${S.settingsPending ? "A módosításaid mentve, a bot a következő futáskor veszi át őket." : "A mentett módosításokat a bot a következő futáskor veszi át."}</p>
+    ${NUMS.map(([k, l, u]) => `<div class="field"><label for="f-${k}">${l}<small>${u}</small></label><input id="f-${k}" name="${k}" inputmode="decimal" value="${s[k] ?? ""}"></div>`).join("")}
+    ${CHECKS.map(([k, l]) => `<div class="field check"><label for="f-${k}">${l}</label><input type="checkbox" id="f-${k}" name="${k}" ${s[k] ? "checked" : ""}></div>`).join("")}
+    <div class="field"><label for="f-kepek">Telegram üzenetek</label><select id="f-kepek" name="kepek">
+      ${[["kartya", "Képes kártya"], ["album", "Album + lista"], ["ki", "Csak szöveg"]].map(([v, l]) => `<option value="${v}" ${s.kepek === v ? "selected" : ""}>${l}</option>`).join("")}
+    </select></div>
+  </form>
+  ${LISTS.map(([k, t, h, ph]) => `<section class="panel" data-list="${k}"><h2>${t}</h2><p class="hint">${h}</p>
+      <div class="taglist">${(s[k] || []).map((v, i) => `<span class="tag">${esc(v)}<button type="button" data-del="${i}" aria-label="${esc(v)} törlése">×</button></span>`).join("")}</div>
+      <div class="addrow"><input placeholder="${ph}" aria-label="${t}: új elem"><button type="button" class="btn ghost" data-add>Hozzáadás</button></div></section>`).join("")}
+  <section class="panel"><h2>Rólam</h2><p class="hint">Az AI ebből tudja, mi érdekel. Soronként egy állítás.</p>
+    <textarea class="rolam" id="rolam" aria-label="Rólam">${esc((s.rolam || []).join("\n"))}</textarea></section>
+  <button class="btn wide" id="saveset">Beállítások mentése</button>
+  <div style="height:14px"></div>
+  ${connPanel()}`;
+}
+function connPanel() {
+  return `<section class="panel"><h2>Kapcsolat</h2><p class="hint">${esc(S.cfg.owner)}/${esc(S.cfg.repo)}, ág: ${esc(S.cfg.branch)}. A token csak ezen az eszközön van tárolva.</p>
+    <button class="btn ghost" id="logout">Kapcsolat bontása ezen az eszközön</button></section>`;
+}
+function collectSettings() {
+  const s = { ...S.settings };
+  for (const [k] of NUMS) { const v = parseFloat(String($(`#f-${k}`).value).replace(/\s/g, "").replace(",", ".")); if (!isNaN(v)) s[k] = k === "ingatlan_min_score" ? v : Math.round(v); }
+  for (const [k] of CHECKS) s[k] = $(`#f-${k}`).checked;
+  s.kepek = $("#f-kepek").value;
+  s.rolam = $("#rolam").value.split("\n").map((x) => x.trim()).filter(Boolean);
+  return s;
+}
+
+/* =================== első indítás =================== */
+function renderSetup() {
+  $("#filters").hidden = true; $(".tabs").hidden = true;
+  $("#status").textContent = "Kapcsolódás a bothoz";
+  $("#main").innerHTML = `<div class="setup">
+    <h2>Kösd össze az appot a botoddal</h2>
+    <p>Az app a privát <b>NAV-alerts</b> repóból olvassa a tételeket, és oda menti a beállításaidat. Ehhez egy GitHub token kell, ami csak ezen a telefonon marad.</p>
+    <ol>
+      <li>GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token</li>
+      <li>Repository access: Only select repositories → NAV-alerts</li>
+      <li>Permissions: Contents: Read and write, Actions: Read and write</li>
+      <li>Másold ide a tokent</li>
+    </ol>
+    <form id="setupform">
+      <label for="s-owner">GitHub felhasználó</label><input id="s-owner" value="${esc(S.cfg?.owner || "pekmate1999-jpg")}" autocapitalize="off" required>
+      <label for="s-repo">Repó</label><input id="s-repo" value="${esc(S.cfg?.repo || "NAV-alerts")}" autocapitalize="off" required>
+      <label for="s-token">Token</label><input id="s-token" type="password" placeholder="github_pat_…" autocomplete="off" required>
+      <div style="height:16px"></div>
+      <button class="btn wide" type="submit">Kapcsolódás</button>
+      <p class="runstate" id="setupmsg"></p>
+    </form></div>`;
+  $("#setupform").onsubmit = async (ev) => {
+    ev.preventDefault();
+    S.cfg = { owner: $("#s-owner").value.trim(), repo: $("#s-repo").value.trim(), token: $("#s-token").value.trim(), branch: "main", workflow: "daily_scrape.yml" };
+    $("#setupmsg").textContent = "Ellenőrzés…";
+    try {
+      const res = await fetch(api(""), { headers: hdr(false) });
+      if (!res.ok) throw new Error(await ghErr(res));
+      const info = await res.json(); S.cfg.branch = info.default_branch || "main";
+      localStorage.setItem(LS, JSON.stringify(S.cfg));
+      $("#filters").hidden = false; $(".tabs").hidden = false;
+      load();
+    } catch (e) { $("#setupmsg").textContent = e.message; }
+  };
+}
+
+/* =================== események =================== */
+document.addEventListener("click", async (ev) => {
+  const t = ev.target.closest("button,[data-tab]");
+  if (!t) return;
+  if (t.dataset.tab) {
+    S.tab = t.dataset.tab; S.shown = PAGE;
+    document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", b === t));
+    render(); window.scrollTo(0, 0); return;
+  }
+  if (t.dataset.src) { S.src[t.dataset.src] = !S.src[t.dataset.src]; t.setAttribute("aria-pressed", S.src[t.dataset.src]); S.shown = PAGE; return render(); }
+  if (t.dataset.f) { S[t.dataset.f] = !S[t.dataset.f]; t.setAttribute("aria-pressed", S[t.dataset.f]); S.shown = PAGE; return render(); }
+  if (t.id === "more") { S.shown += PAGE; return render(); }
+  if (t.id === "reload") return load();
+  const lot = t.closest(".lot");
+  if (lot && t.dataset.act) {
+    const key = lot.dataset.key, e = S.byKey[key];
+    if (t.dataset.act === "save") {
+      if (S.saved[key]) { delete S.saved[key]; toast("Kivetted a mentettek közül"); }
+      else { S.saved[key] = { ts: new Date().toISOString() }; toast("Mentve. A bot figyeli a változásait."); }
+      queueWrite("app/saved.json", () => S.saved, "app: mentett tételek");
+    } else {
+      const val = t.dataset.act === "up" ? 1 : 0;
+      const prev = S.fb[key];
+      S.appFb = S.appFb.filter((f) => f.key !== key);
+      if (prev !== val) {
+        S.appFb.push({ key, ertek: val, ts: new Date().toISOString(), nev: e?.nev, kategoria: e?.kategoria, min_ar: e?.min_ar });
+        S.fb[key] = val;
+        toast(val ? "Tetszik – az AI ebből tanul" : "Elrejtve – az AI ebből tanul");
+      } else { delete S.fb[key]; toast("Visszajelzés törölve"); }
+      queueWrite("app/feedback.json", () => S.appFb, "app: visszajelzés");
+    }
+    return render();
+  }
+  if (t.id === "run-full" || t.id === "run-set") {
+    const mode = t.id === "run-full" ? "teljes" : "beallitasok";
+    try {
+      await flush();
+      const res = await fetch(api(`/actions/workflows/${S.cfg.workflow}/dispatches`), {
+        method: "POST", headers: { ...hdr(false), "Content-Type": "application/json" },
+        body: JSON.stringify({ ref: S.cfg.branch, inputs: { mode } }) });
+      if (!res.ok) throw new Error(await ghErr(res));
+      toast(mode === "teljes" ? "A bot elindult. Az eredmény pár perc múlva érkezik." : "Szinkron elindítva");
+      setTimeout(loadRun, 4000);
+    } catch (e) { toast(e.message); }
+    return;
+  }
+  if (t.id === "saveset") {
+    try {
+      S.settings = collectSettings(); S.settingsTs = new Date().toISOString(); S.settingsPending = true;
+      await putJson("app/settings.json", { updated_at: S.settingsTs, settings: S.settings }, "app: beállítások");
+      toast("Beállítások mentve. A bot a következő futáskor veszi át.");
+      renderSettings();
+    } catch (e) { toast(e.message); }
+    return;
+  }
+  const panel = t.closest("[data-list]");
+  if (panel) {
+    const k = panel.dataset.list; S.settings = { ...S.settings, ...(document.getElementById("setform") ? collectSettings() : {}) };
+    const lst = [...(S.settings[k] || [])];
+    if (t.dataset.del != null) lst.splice(+t.dataset.del, 1);
+    if (t.dataset.add != null) { const v = panel.querySelector("input").value.trim(); if (v && !lst.some((x) => x.toLowerCase() === v.toLowerCase())) lst.push(v); }
+    S.settings[k] = lst; renderSettings();
+    toast("Ne felejtsd el menteni");
+    return;
+  }
+  if (t.id === "logout") { if (confirm("Biztosan törlöd a tokent erről az eszközről?")) { localStorage.removeItem(LS); S.cfg = null; renderSetup(); } }
+});
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter" && ev.target.closest(".addrow")) { ev.preventDefault(); ev.target.closest(".addrow").querySelector("[data-add]").click(); }
+});
+document.addEventListener("input", (ev) => {
+  const lot = ev.target.closest(".lot");
+  if (lot && (ev.target.dataset.note != null || ev.target.dataset.max != null)) {
+    const sv = S.saved[lot.dataset.key]; if (!sv) return;
+    if (ev.target.dataset.note != null) sv.jegyzet = ev.target.value;
+    else sv.max_licit = parseInt(ev.target.value.replace(/\D/g, "")) || 0;
+    queueWrite("app/saved.json", () => S.saved, "app: jegyzet");
+  }
+});
+let qT; $("#q").addEventListener("input", (ev) => { clearTimeout(qT); qT = setTimeout(() => { S.q = ev.target.value; S.shown = PAGE; render(); }, 200); });
+$("#sort").addEventListener("change", (ev) => { S.sort = ev.target.value; render(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.cfg && S.loadedAt && Date.now() - S.loadedAt > 10 * 60e3) load(); });
+
+/* =================== indulás =================== */
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+(async () => {
+  if (!S.cfg?.token) return renderSetup();
+  S.cfg.workflow ||= "daily_scrape.yml"; S.cfg.branch ||= "main";
+  const cached = await cachedFeed();
+  if (cached) { setFeed(cached); render(); $("#status").textContent = "Mentett adatok, frissítés…"; }
+  load();
+})();
+</script>
+</body>
+</html>
