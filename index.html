@@ -78,6 +78,7 @@ main{padding:14px 12px calc(var(--tab-h) + 24px + env(safe-area-inset-bottom));m
 .media.noimg{aspect-ratio:auto;height:64px}
 .pills{position:absolute;left:10px;top:10px;display:flex;gap:6px}
 .pill{background:rgba(20,26,39,.78);color:#fff;font:600 12px/1 var(--f-body);letter-spacing:.2px;padding:6px 8px;border-radius:6px;backdrop-filter:blur(4px)}
+.pill.new{background:var(--stamp);color:#fff}
 .pill.muted{background:rgba(255,255,255,.88);color:#3d4556}
 .media.noimg .pill{background:var(--card);color:var(--ink-soft);border:1px solid var(--line)}
 .stamp{position:absolute;right:10px;top:10px;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;transform:rotate(-9deg);
@@ -278,12 +279,14 @@ textarea.rolam{width:100%;min-height:160px;padding:10px 12px;border:1px solid va
 "use strict";
 /* =================== állapot =================== */
 const LS = "arveres-cfg";
+const LS_VISIT = "arveres-visited";
 const PAGE = 25;
 const S = {
   cfg: JSON.parse(localStorage.getItem(LS) || "null"),
   feed: [], byKey: {}, fb: {}, appFb: [], saved: {}, settings: null, settingsTs: "",
   tab: "ingo", shown: PAGE, q: "", sort: "score", onlyRec: true, hidden: false,
-  src: { NAV: true, MBVK: true, MNV: true, "Portál": true }, run: null, loadedAt: null,
+  src: { NAV: true, MBVK: true, MNV: true, "Portál": true },
+  visited: JSON.parse(localStorage.getItem(LS_VISIT) || "null"), prevVisit: {}, run: null, loadedAt: null,
 };
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -482,7 +485,7 @@ function card(e) {
     ${e.kiemelt ? `<div class="flag">${ic("flag")}Kiemelt megye: ${esc(e.kiemelt)}</div>` : ""}
     <div class="media${e.image_url ? "" : " noimg"}">
       ${e.image_url ? `<img src="${esc(e.image_url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : ""}
-      <div class="pills"><span class="pill">${esc(e.forras)}</span>${e.ajanlott ? "" : `<span class="pill muted">Nem ajánlott</span>`}</div>
+      <div class="pills">${isNew(e) ? `<span class="pill new">Új</span>` : ""}<span class="pill">${esc(e.forras)}</span>${e.ajanlott ? "" : `<span class="pill muted">Nem ajánlott</span>`}</div>
       <div class="stamp${score >= 8 ? " hot" : ""}" role="img" aria-label="AI értékelés: ${score} a 10-ből"><span>${score}<small>/10</small></span></div>
     </div>
     <div class="body">
@@ -534,7 +537,7 @@ function cardAt(e) {
   return `<article class="lot${r.ajanlott ? "" : " rejected"}" data-key="${esc(e.key)}">
     <div class="media${e.image_url ? "" : " noimg"}">
       ${e.image_url ? `<img src="${esc(e.image_url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : ""}
-      <div class="pills"><span class="pill">${esc(e.forras)}</span>${r.ajanlott ? "" : `<span class="pill muted">Nem ajánlott</span>`}</div>
+      <div class="pills">${isNew(e) ? `<span class="pill new">Új</span>` : ""}<span class="pill">${esc(e.forras)}</span>${r.ajanlott ? "" : `<span class="pill muted">Nem ajánlott</span>`}</div>
       <div class="stamp${score >= 8 ? " hot" : ""}" role="img" aria-label="Álomtelek-pont: ${score} a 10-ből"><span>${score}<small>/10</small></span></div>
     </div>
     <div class="body">
@@ -574,6 +577,17 @@ function cardAt(e) {
 }
 
 /* =================== nézetek =================== */
+function markVisited() {
+  // első indításkor mindent láttnak veszünk (ne 100 "új" jelzéssel induljon)
+  const now = new Date().toISOString();
+  if (!S.visited) { S.visited = { ingo: now, ingatlan: now, alomtelek: now, saved: now }; localStorage.setItem(LS_VISIT, JSON.stringify(S.visited)); }
+  const tab = S.tab;
+  if (!["ingo", "ingatlan", "alomtelek", "saved"].includes(tab) || !S.feed.length) return;
+  if (!(tab in S.prevVisit)) S.prevVisit[tab] = S.visited[tab] || "";      // ebben a látogatásban ehhez képest "új"
+  S.visited[tab] = now;
+  localStorage.setItem(LS_VISIT, JSON.stringify(S.visited));
+}
+const isNew = (e) => S.tab !== "saved" && (e.first_seen || "") > (S.prevVisit[S.tab] ?? "9999");
 function atHead(n) {
   if (S.tab !== "alomtelek") return "";
   const urls = (S.settings?.at_kereso_urlek || []).length;
@@ -584,12 +598,16 @@ function render() {
   renderStatus();
   const counts = { ingo: 0, ingatlan: 0 };
   counts.alomtelek = 0;
+  markVisited();
+  const V = S.visited || {};
   for (const e of S.feed) {
-    if (e.ai && e.ajanlott && S.fb[e.key] !== 0) counts[e.ingatlan ? "ingatlan" : "ingo"]++;
-    if (e.at?.ajanlott && S.fb["at:" + e.key] !== 0) counts.alomtelek++;
+    const t = e.first_seen || "";
+    if (e.ai && e.ajanlott && S.fb[e.key] !== 0 && t > (V[e.ingatlan ? "ingatlan" : "ingo"] || "")) counts[e.ingatlan ? "ingatlan" : "ingo"]++;
+    if (e.at?.ajanlott && S.fb["at:" + e.key] !== 0 && t > (V.alomtelek || "")) counts.alomtelek++;
   }
+  const savedChanged = Object.keys(S.saved).filter((k) => (S.byKey[k]?.updated || "") > (V.saved || "") && (S.byKey[k]?.updated || "") > (S.saved[k]?.ts || "")).length;
   const setB = (id, n) => { const el = $(id); el.textContent = n > 99 ? "99+" : n; el.dataset.n = n; };
-  setB("#c-ingo", counts.ingo); setB("#c-ingatlan", counts.ingatlan); setB("#c-alomtelek", counts.alomtelek); setB("#c-saved", Object.keys(S.saved).length);
+  setB("#c-ingo", counts.ingo); setB("#c-ingatlan", counts.ingatlan); setB("#c-alomtelek", counts.alomtelek); setB("#c-saved", savedChanged);
   $("#filters").hidden = S.tab === "settings" || S.tab === "saved";
   if (S.tab === "settings") return renderSettings();
   const main = $("#main");
@@ -746,7 +764,7 @@ document.addEventListener("click", async (ev) => {
   const t = ev.target.closest("button,[data-tab]");
   if (!t) return;
   if (t.dataset.tab) {
-    S.tab = t.dataset.tab; S.shown = PAGE;
+    S.tab = t.dataset.tab; S.shown = PAGE; delete S.prevVisit[S.tab];
     document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", b === t));
     render(); window.scrollTo(0, 0); return;
   }
