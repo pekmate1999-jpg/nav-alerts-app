@@ -839,7 +839,11 @@ document.addEventListener("click", async (ev) => {
       if (v && !lst.some((x) => x.toLowerCase() === v.toLowerCase())) lst.push(v);
     }
     S.settings[k] = lst; renderSettings();
-    toast("Ne felejtsd el menteni");
+    try {   // lista-módosítás azonnal mentődik, nem kell külön a Mentés gomb
+      S.settingsTs = new Date().toISOString(); S.settingsPending = true;
+      await putJson("app/settings.json", { updated_at: S.settingsTs, settings: S.settings }, "app: beállítások");
+      toast("Mentve");
+    } catch (e) { toast(e.message); }
     return;
   }
   if (t.id === "logout") { if (confirm("Biztosan törlöd a tokent erről az eszközről?")) { localStorage.removeItem(LS); S.cfg = null; renderSetup(); } }
@@ -858,7 +862,7 @@ document.addEventListener("input", (ev) => {
 });
 let qT; $("#q").addEventListener("input", (ev) => { clearTimeout(qT); qT = setTimeout(() => { S.q = ev.target.value; S.shown = PAGE; render(); }, 200); });
 $("#sort").addEventListener("change", (ev) => { S.sort = ev.target.value; render(); });
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.cfg && S.loadedAt && Date.now() - S.loadedAt > 10 * 60e3) load(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.cfg && S.loadedAt && S.tab !== "settings" && Date.now() - S.loadedAt > 10 * 60e3) load(); });
 
 /* =================== telepítés =================== */
 const INST = { evt: null, installed: null, standalone: matchMedia("(display-mode: standalone)").matches || navigator.standalone === true, sw: false };
