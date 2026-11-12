@@ -379,6 +379,7 @@ async function load() {
     const stTs = stSet?.updated_at || "", apTs = appSet?.updated_at || "";
     if (appSet?.settings && apTs > stTs) { S.settings = { ...(stSet || {}), ...appSet.settings }; S.settingsTs = apTs; S.settingsPending = true; }
     else { S.settings = stSet; S.settingsTs = stTs; S.settingsPending = false; }
+    if (S.settings) S.settings = { ...AT_DEFAULTS, ...S.settings };
     S.loadedAt = new Date();
     loadRun();
     render();
@@ -641,6 +642,8 @@ const LISTS = [
   ["tiltott_kategoriak", "Tiltott kategóriák", "Az árverési kategória neve alapján.", "pl. Ruházat"],
   ["tiltott_szavak", "Tiltott szavak", "Egész szóra illeszkedik, ragozva is (póló → pólók).", "pl. körömfesték"],
 ];
+const AT_DEFAULTS = { at_be: true, at_max_ar: 10000000, at_min_terulet: 4000, at_kell_epulet: true, at_viz: "fontos", at_max_tav_km: 0,
+  at_megyek: [], at_min_pont: 6, at_csak_1_1: true, at_tiltott_szavak: ["lakottan", "haszonélvezet"], at_kereso_urlek: [], at_rolam: [] };
 const AT_NUMS = [
   ["at_max_ar", "Maximális ár", "Ft"], ["at_min_terulet", "Minimális terület", "m²"],
   ["at_max_tav_km", "Maximális távolság Gödtől", "km, 0 = bárhol"], ["at_min_pont", "Minimális álomtelek-pont", "1–10, ennyitől jön értesítés"],
@@ -716,7 +719,7 @@ function collectSettings() {
   for (const [k] of CHECKS) s[k] = $(`#f-${k}`).checked;
   s.kepek = $("#f-kepek").value;
   s.rolam = $("#rolam").value.split("\n").map((x) => x.trim()).filter(Boolean);
-  for (const [k] of AT_NUMS) { const el = $(`#f-${k}`); if (!el) continue; const v = parseInt(String(el.value).replace(/\D/g, "")); s[k] = isNaN(v) ? 0 : v; }
+  for (const [k] of AT_NUMS) { const el = $(`#f-${k}`); if (!el || !String(el.value).trim()) continue; const v = parseInt(String(el.value).replace(/\D/g, "")); if (!isNaN(v)) s[k] = v; }
   for (const [k] of AT_CHECKS) { const el = $(`#f-${k}`); if (el) s[k] = el.checked; }
   if ($("#f-at_viz")) s.at_viz = $("#f-at_viz").value;
   if ($("#at_rolam")) s.at_rolam = $("#at_rolam").value.split("\n").map((x) => x.trim()).filter(Boolean);
