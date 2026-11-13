@@ -680,7 +680,7 @@ const NUMS_ING = [
 ];
 const NUMS = [...NUMS_INGO, ...NUMS_ING];
 const CHECKS_ING = [["csak_1_1", "Csak teljes tulajdon (1/1)"], ["mbvk_csak_bekoltozheto", "MBVK: csak beköltözhető ingatlan"]];
-const CHECKS_GEN = [["mbvk", "MBVK figyelése"], ["ai_kepek", "Az AI a fotókat is elemezze"], ["szunet", "Szünet: a bot nem küld semmit"]];
+const CHECKS_GEN = [["mbvk", "MBVK figyelése"], ["ai_kepek", "Az AI a fotókat is elemezze"], ["tg_csak_osszesito", "Telegram: csak rövid értesítés (a találatok az appban)"], ["szunet", "Szünet: a bot nem küld semmit"]];
 const CHECKS = [...CHECKS_ING, ...CHECKS_GEN];
 const LISTS_INGO = [
   ["tiltott_kategoriak", "Tiltott kategóriák", "Az árverési kategória neve alapján.", "pl. Ruházat"],
@@ -824,6 +824,15 @@ function renderSetup() {
 }
 
 /* =================== események =================== */
+function applyHash() {                       // Telegram-link: …/#alomtelek, #ingatlan, #ingo
+  const h = location.hash.slice(1);
+  if (!["ingo", "ingatlan", "alomtelek", "saved", "settings"].includes(h) || h === S.tab) return false;
+  S.tab = h; S.shown = PAGE;
+  document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === h));
+  return true;
+}
+applyHash();
+window.addEventListener("hashchange", () => { if (applyHash()) { render(); window.scrollTo(0, 0); } });
 document.addEventListener("click", async (ev) => {
   const t = ev.target.closest("button,[data-tab]");
   if (!t) return;
