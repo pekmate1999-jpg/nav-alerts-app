@@ -185,6 +185,8 @@ textarea.rolam{width:100%;min-height:160px;padding:10px 12px;border:1px solid va
 .btn.ghost{background:none;color:var(--ink);border:1px solid var(--line)}
 .btn.wide{width:100%}
 .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.grouphead{display:flex;align-items:center;gap:8px;margin:22px 4px 10px;font:700 24px var(--f-cond)}
+.grouphead .ic{width:22px;height:22px}
 .runstate{font-size:14px;color:var(--ink-soft);margin:4px 0 0}
 .diag{list-style:none;padding:0;margin:4px 0 0;font-size:14px}
 .diag li{padding:6px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}
@@ -660,22 +662,31 @@ function render() {
     (items.length > shown.length ? `<button class="morebtn" id="more">További ${Math.min(PAGE, items.length - shown.length)} tétel (még ${items.length - shown.length})</button>` : "");
 }
 
-const NUMS = [
+const NUMS_INGO = [
   ["min_haszon", "Minimális várható haszon", "Ft"], ["min_arany", "Minimális haszon a vételár arányában", "%"],
-  ["min_erdekesseg", "Ennyi pont felett mindig jön", "1–10"], ["max_becsertek", "Ingóság becsérték plafon", "Ft"],
-  ["max_mbvk_ingatlan", "MBVK ingatlan árplafon", "Ft"], ["max_mnv_ingatlan", "MNV ingatlan árplafon", "Ft"],
-  ["ingatlan_min_score", "Ingatlan minimális pontszám", "1–5"],
+  ["min_erdekesseg", "Ennyi pont felett mindig jön", "1–10"], ["max_becsertek", "Becsérték plafon", "Ft, efölött kimarad"],
 ];
-const CHECKS = [
-  ["mbvk", "MBVK figyelése"], ["mbvk_csak_bekoltozheto", "MBVK: csak beköltözhető ingatlan"],
-  ["csak_1_1", "Csak teljes tulajdon (1/1)"], ["szunet", "Szünet: a bot nem küld semmit"],
+const NUMS_ING = [
+  ["ing_min_haszon", "Minimális várható haszon", "Ft"], ["ing_min_arany", "Minimális haszon a vételár arányában", "%"],
+  ["ing_min_erdekesseg", "Ennyi pont felett mindig jön", "1–10, lejjebb véve több ingatlan jön"],
+  ["max_mbvk_ingatlan", "MBVK árplafon", "Ft, feljebb véve több ingatlan jön"], ["max_mnv_ingatlan", "MNV árplafon", "Ft"],
+  ["ingatlan_min_score", "Minimális hely-pontszám", "1–5 (táv, telek, ár); 1 = nincs szűrés"],
 ];
-const LISTS = [
-  ["kiemelt_megyek", "Kiemelt megyék", "Innen minden ingatlan jön, ár- és AI-szűrés nélkül.", "pl. Somogy"],
+const NUMS = [...NUMS_INGO, ...NUMS_ING];
+const CHECKS_ING = [["csak_1_1", "Csak teljes tulajdon (1/1)"], ["mbvk_csak_bekoltozheto", "MBVK: csak beköltözhető ingatlan"]];
+const CHECKS_GEN = [["mbvk", "MBVK figyelése"], ["ai_kepek", "Az AI a fotókat is elemezze"], ["szunet", "Szünet: a bot nem küld semmit"]];
+const CHECKS = [...CHECKS_ING, ...CHECKS_GEN];
+const LISTS_INGO = [
   ["tiltott_kategoriak", "Tiltott kategóriák", "Az árverési kategória neve alapján.", "pl. Ruházat"],
   ["tiltott_szavak", "Tiltott szavak", "Egész szóra illeszkedik, ragozva is (póló → pólók).", "pl. körömfesték"],
 ];
-const AT_DEFAULTS = { at_be: true, at_max_ar: 10000000, at_min_terulet: 4000, at_kell_epulet: true, at_viz: "fontos", at_max_tav_km: 0,
+const LISTS_ING = [["kiemelt_megyek", "Kiemelt megyék", "Innen minden ingatlan jön, ár- és AI-szűrés nélkül.", "pl. Somogy"]];
+const numField = ([k, l, u], s) => `<div class="field"><label for="f-${k}">${l}<small>${u}</small></label><input id="f-${k}" name="${k}" inputmode="decimal" value="${s[k] ?? ""}"></div>`;
+const checkField = ([k, l], s) => `<div class="field check"><label for="f-${k}">${l}</label><input type="checkbox" id="f-${k}" name="${k}" ${s[k] ? "checked" : ""}></div>`;
+const listPanel = ([k, t, hnt, ph], s) => `<section class="panel" data-list="${k}"><h2>${t}</h2><p class="hint">${hnt}</p>
+      <div class="taglist">${(s[k] || []).map((v, i) => `<span class="tag">${esc(v)}<button type="button" data-del="${i}" aria-label="${esc(v)} törlése">×</button></span>`).join("")}</div>
+      <div class="addrow"><input placeholder="${ph}" aria-label="${t}: új elem"><button type="button" class="btn ghost" data-add>Hozzáadás</button></div></section>`;
+const AT_DEFAULTS = { ing_min_haszon: 300000, ing_min_arany: 20, ing_min_erdekesseg: 6, ai_kepek: true, at_be: true, at_max_ar: 10000000, at_min_terulet: 4000, at_kell_epulet: true, at_viz: "fontos", at_max_tav_km: 0,
   at_megyek: [], at_min_pont: 6, at_csak_1_1: true, at_tiltott_szavak: ["lakottan", "haszonélvezet"], at_kereso_urlek: [], at_rolam: [] };
 const AT_NUMS = [
   ["at_max_ar", "Maximális ár", "Ft"], ["at_min_terulet", "Minimális terület", "m²"],
@@ -694,8 +705,8 @@ function portalStatus() {
 }
 function atSettings(s) {
   const viz = s.at_viz || "fontos";
-  return `<section class="panel" id="at-settings"><h2>Álomtelek</h2>
-    <p class="hint">Az Álomtelek fül és értesítések beállításai. A mentés gomb lent van.</p>
+  return `<section class="panel" id="at-settings"><h2>Szűrők</h2>
+    <p class="hint">Az Álomtelek fül és értesítések beállításai.</p>
     ${AT_NUMS.map(([k, l, u]) => `<div class="field"><label for="f-${k}">${l}<small>${u}</small></label><input id="f-${k}" name="${k}" inputmode="numeric" value="${s[k] ?? ""}"></div>`).join("")}
     <div class="field"><label for="f-at_viz">Víz (patak, tó)</label><select id="f-at_viz">
       ${[["kotelezo", "Kötelező"], ["fontos", "Fontos"], ["mindegy", "Mindegy"]].map(([v, l]) => `<option value="${v}" ${viz === v ? "selected" : ""}>${l}</option>`).join("")}
@@ -723,21 +734,32 @@ function renderSettings() {
       <button class="btn ghost" id="run-set">Csak a beállítások szinkronja</button>
     </div>
   </section>
-  <form class="panel" id="setform">
-    <h2>Szűrés</h2>
+  <h2 class="grouphead">${ic("box")}Ingóság</h2>
+  <form class="panel" id="setform" onsubmit="return false">
+    <h2>Szűrők</h2>
     <p class="hint">${S.settingsPending ? "A módosításaid mentve, a bot a következő futáskor veszi át őket." : "A mentett módosításokat a bot a következő futáskor veszi át."}</p>
-    ${NUMS.map(([k, l, u]) => `<div class="field"><label for="f-${k}">${l}<small>${u}</small></label><input id="f-${k}" name="${k}" inputmode="decimal" value="${s[k] ?? ""}"></div>`).join("")}
-    ${CHECKS.map(([k, l]) => `<div class="field check"><label for="f-${k}">${l}</label><input type="checkbox" id="f-${k}" name="${k}" ${s[k] ? "checked" : ""}></div>`).join("")}
+    ${NUMS_INGO.map((f) => numField(f, s)).join("")}
+  </form>
+  ${LISTS_INGO.map((l) => listPanel(l, s)).join("")}
+  <section class="panel"><h2>Rólam</h2><p class="hint">Az AI ebből tudja, milyen tárgyak érdekelnek. Soronként egy állítás.</p>
+    <textarea class="rolam" id="rolam" aria-label="Rólam">${esc((s.rolam || []).join("\n"))}</textarea></section>
+  <h2 class="grouphead">${ic("home")}Ingatlan</h2>
+  <section class="panel">
+    <h2>Szűrők</h2>
+    <p class="hint">A befektetési célú ingatlanok külön küszöbei. Az Álomtelek fülnek saját beállításai vannak lejjebb.</p>
+    ${NUMS_ING.map((f) => numField(f, s)).join("")}
+    ${CHECKS_ING.map((f) => checkField(f, s)).join("")}
+  </section>
+  ${LISTS_ING.map((l) => listPanel(l, s)).join("")}
+  <h2 class="grouphead">${ic("tree")}Álomtelek</h2>
+  ${atSettings(s)}
+  <h2 class="grouphead">${ic("sliders")}Általános</h2>
+  <section class="panel">
+    ${CHECKS_GEN.map((f) => checkField(f, s)).join("")}
     <div class="field"><label for="f-kepek">Telegram üzenetek</label><select id="f-kepek" name="kepek">
       ${[["kartya", "Képes kártya"], ["album", "Album + lista"], ["ki", "Csak szöveg"]].map(([v, l]) => `<option value="${v}" ${s.kepek === v ? "selected" : ""}>${l}</option>`).join("")}
     </select></div>
-  </form>
-  ${LISTS.map(([k, t, h, ph]) => `<section class="panel" data-list="${k}"><h2>${t}</h2><p class="hint">${h}</p>
-      <div class="taglist">${(s[k] || []).map((v, i) => `<span class="tag">${esc(v)}<button type="button" data-del="${i}" aria-label="${esc(v)} törlése">×</button></span>`).join("")}</div>
-      <div class="addrow"><input placeholder="${ph}" aria-label="${t}: új elem"><button type="button" class="btn ghost" data-add>Hozzáadás</button></div></section>`).join("")}
-  <section class="panel"><h2>Rólam</h2><p class="hint">Az AI ebből tudja, mi érdekel. Soronként egy állítás.</p>
-    <textarea class="rolam" id="rolam" aria-label="Rólam">${esc((s.rolam || []).join("\n"))}</textarea></section>
-  ${atSettings(s)}
+  </section>
   <button class="btn wide" id="saveset">Beállítások mentése</button>
   <div style="height:14px"></div>
   ${connPanel()}`;
