@@ -146,6 +146,11 @@ details.more p{margin:4px 0 8px;white-space:pre-line;color:var(--ink-soft)}
 .portal .bad{color:var(--loss)}
 .portal .ok{color:var(--gain)}
 
+#map{height:calc(100dvh - 300px);min-height:340px;border-radius:var(--radius);border:1px solid var(--line);margin-bottom:14px;background:var(--sunk);z-index:0}
+.mappop b{font:600 15px var(--f-cond)}
+.mappop a{color:#1F2A44;font-weight:600}
+.mapnote{font-size:13px;color:var(--ink-soft);margin:-6px 2px 12px}
+
 /* alsó menü */
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(5,1fr);
   background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
@@ -589,11 +594,38 @@ function markVisited() {
   localStorage.setItem(LS_VISIT, JSON.stringify(S.visited));
 }
 const isNew = (e) => S.tab !== "saved" && (e.first_seen || "") > (S.prevVisit[S.tab] ?? "9999");
+const coords = (e) => { const m = /[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/.exec(e.maps_url || ""); return m ? [+m[1], +m[2]] : null; };
+function loadLeaflet() {
+  if (window.L) return Promise.resolve();
+  if (!loadLeaflet.p) loadLeaflet.p = new Promise((ok, err) => {
+    const c = document.createElement("link"); c.rel = "stylesheet"; c.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(c);
+    const s = document.createElement("script"); s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"; s.onload = ok; s.onerror = () => { loadLeaflet.p = null; err(new Error("A térkép nem tölthető be (nincs internet?)")); }; document.head.appendChild(s);
+  });
+  return loadLeaflet.p;
+}
+async function drawMap(items) {
+  const pts = items.map((e) => [e, coords(e)]).filter(([, c]) => c);
+  const note = $("#mapnote");
+  if (note) note.textContent = pts.length < items.length ? `${items.length - pts.length} helynek nincs pontos helye, azok csak a listában látszanak.` : "";
+  try { await loadLeaflet(); } catch (e) { toast(e.message); return; }
+  const el = $("#map"); if (!el) return;
+  const map = L.map(el, { zoomControl: true }).setView([47.16, 19.5], 7);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(map);
+  const col = getComputedStyle(document.documentElement);
+  for (const [e, c] of pts) {
+    const p = e.at?.pont || 0, area = e.at?.terulet_m2 || e.terulet_m2;
+    L.circleMarker(c, { radius: 7 + p, weight: 2, color: "#fff", fillOpacity: .9,
+      fillColor: p >= 8 ? col.getPropertyValue("--stamp") : e.at?.ajanlott ? col.getPropertyValue("--gain") : "#8A92A1" })
+      .addTo(map).bindPopup(`<div class="mappop"><b>${p}/10 · ${esc(niceName(e.nev)).slice(0, 60)}</b><br>${ftShort(e.min_ar)}${area ? ` · ${Math.round(area).toLocaleString("hu-HU")} m²` : ""}<br>${esc(e.at?.indoklas || "")}<br><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.forras)} oldal</a></div>`);
+  }
+  if (pts.length) map.fitBounds(pts.map(([, c]) => c), { padding: [30, 30], maxZoom: 11 });
+}
 function atHead(n) {
   if (S.tab !== "alomtelek") return "";
   const urls = (S.settings?.at_kereso_urlek || []).length;
   return `<div class="tabhead"><span>${n ? `${n} hely` : ""}${urls ? `${n ? ", " : ""}${urls} portál-keresés` : `${n ? ", " : ""}portál-keresés nincs megadva`}</span>
-    <button class="linkbtn" id="goto-at">${ic("sliders")}Álomtelek beállításai</button></div>`;
+    <span style="display:flex;gap:14px"><button class="linkbtn" id="toggle-map">${ic(S.map ? "sort" : "pin")}${S.map ? "Lista" : "Térkép"}</button>
+    <button class="linkbtn" id="goto-at">${ic("sliders")}Beállítások</button></span></div>`;
 }
 function render() {
   renderStatus();
@@ -622,6 +654,7 @@ function render() {
       : `<div class="empty"><strong>Nincs a szűrőknek megfelelő tétel</strong>${S.onlyRec ? "Kapcsold ki a „Csak ajánlott” szűrőt, ha az AI által elutasított tételeket is látni szeretnéd." : "Próbálj más keresőszót vagy forrást."}</div>`;
     return;
   }
+  if (S.tab === "alomtelek" && S.map) { main.innerHTML = atHead(items.length) + `<div id="map"></div><p class="mapnote" id="mapnote"></p>`; return drawMap(items); }
   const shown = items.slice(0, S.shown);
   main.innerHTML = atHead(items.length) + shown.map((e) => isAtView(e) ? cardAt(e) : card(e)).join("") +
     (items.length > shown.length ? `<button class="morebtn" id="more">További ${Math.min(PAGE, items.length - shown.length)} tétel (még ${items.length - shown.length})</button>` : "");
@@ -779,6 +812,7 @@ document.addEventListener("click", async (ev) => {
   if (t.dataset.src) { S.src[t.dataset.src] = !S.src[t.dataset.src]; t.setAttribute("aria-pressed", S.src[t.dataset.src]); S.shown = PAGE; return render(); }
   if (t.dataset.f) { S[t.dataset.f] = !S[t.dataset.f]; t.setAttribute("aria-pressed", S[t.dataset.f]); S.shown = PAGE; return render(); }
   if (t.id === "more") { S.shown += PAGE; return render(); }
+  if (t.id === "toggle-map") { S.map = !S.map; return render(); }
   if (t.id === "goto-at") {
     S.tab = "settings"; document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === "settings"));
     render(); setTimeout(() => document.getElementById("at-settings")?.scrollIntoView({ block: "start" }), 50); return;
