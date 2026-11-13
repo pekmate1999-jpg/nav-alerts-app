@@ -692,13 +692,13 @@ const checkField = ([k, l], s) => `<div class="field check"><label for="f-${k}">
 const listPanel = ([k, t, hnt, ph], s) => `<section class="panel" data-list="${k}"><h2>${t}</h2><p class="hint">${hnt}</p>
       <div class="taglist">${(s[k] || []).map((v, i) => `<span class="tag">${esc(v)}<button type="button" data-del="${i}" aria-label="${esc(v)} törlése">×</button></span>`).join("")}</div>
       <div class="addrow"><input placeholder="${ph}" aria-label="${t}: új elem"><button type="button" class="btn ghost" data-add>Hozzáadás</button></div></section>`;
-const AT_DEFAULTS = { ing_min_haszon: 300000, ing_min_arany: 20, ing_min_erdekesseg: 6, ai_kepek: true, at_be: true, at_max_ar: 10000000, at_min_terulet: 4000, at_kell_epulet: true, at_viz: "fontos", at_max_tav_km: 0,
+const AT_DEFAULTS = { ing_min_haszon: 300000, ing_min_arany: 20, ing_min_erdekesseg: 6, ai_kepek: true, at_be: true, at_max_ar: 10000000, at_min_terulet: 4000, at_kell_epulet: true, at_portalok: true, at_viz: "fontos", at_max_tav_km: 0,
   at_megyek: [], at_min_pont: 6, at_csak_1_1: true, at_tiltott_szavak: ["lakottan", "haszonélvezet"], at_kereso_urlek: [], at_rolam: [] };
 const AT_NUMS = [
   ["at_max_ar", "Maximális ár", "Ft"], ["at_min_terulet", "Minimális terület", "m²"],
   ["at_max_tav_km", "Maximális távolság Gödtől", "km, 0 = bárhol"], ["at_min_pont", "Minimális álomtelek-pont", "1–10, ennyitől jön értesítés"],
 ];
-const AT_CHECKS = [["at_be", "Álomtelek-keresés bekapcsolva"], ["at_kell_epulet", "Legyen rajta épület (felújítandó is jó)"], ["at_csak_1_1", "Csak teljes tulajdon (1/1)"]];
+const AT_CHECKS = [["at_be", "Álomtelek-keresés bekapcsolva"], ["at_kell_epulet", "Legyen rajta épület (felújítandó is jó)"], ["at_csak_1_1", "Csak teljes tulajdon (1/1)"], ["at_portalok", "Jófogás, Otthontérkép, Ingatlanbazár figyelése (automatikus)"]];
 const AT_LISTS = [
   ["at_kereso_urlek", "Keresési linkek", "Állítsd be a keresést az ingatlan.com-on, a Jófogáson vagy bármelyik portálon (pl. eladó ház/tanya, ár, terület, legújabb elöl), és másold ide a találati oldal linkjét. A bot minden futáskor átnézi.", "https://ingatlan.com/lista/…"],
   ["at_megyek", "Megyék", "Üresen hagyva az egész ország.", "pl. Zala"],
