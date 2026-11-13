@@ -614,15 +614,21 @@ async function drawMap(items) {
   const map = L.map(el, { zoomControl: true }).setView([47.16, 19.5], 7);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(map);
   const col = getComputedStyle(document.documentElement);
+  const at = S.tab === "alomtelek";
   for (const [e, c] of pts) {
-    const p = e.at?.pont || 0, area = e.at?.terulet_m2 || e.terulet_m2;
+    const p = at ? (e.at?.pont || 0) : (e.ai?.erdekesseg || 0), area = e.at?.terulet_m2 || e.terulet_m2;
+    const rec = at ? e.at?.ajanlott : e.ajanlott;
+    const line2 = at ? `${ftShort(e.min_ar)}${area ? ` · ${Math.round(area).toLocaleString("hu-HU")} m²` : ""}`
+      : `${ftShort(e.min_ar)}${e.ai?.haszon_ft != null ? ` · haszon ${e.ai.haszon_ft >= 0 ? "+" : ""}${ftShort(e.ai.haszon_ft)}` : ""}`;
     L.circleMarker(c, { radius: 7 + p, weight: 2, color: "#fff", fillOpacity: .9,
-      fillColor: p >= 8 ? col.getPropertyValue("--stamp") : e.at?.ajanlott ? col.getPropertyValue("--gain") : "#8A92A1" })
-      .addTo(map).bindPopup(`<div class="mappop"><b>${p}/10 · ${esc(niceName(e.nev)).slice(0, 60)}</b><br>${ftShort(e.min_ar)}${area ? ` · ${Math.round(area).toLocaleString("hu-HU")} m²` : ""}<br>${esc(e.at?.indoklas || "")}<br><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.forras)} oldal</a></div>`);
+      fillColor: p >= 8 ? col.getPropertyValue("--stamp") : rec ? col.getPropertyValue("--gain") : "#8A92A1" })
+      .addTo(map).bindPopup(`<div class="mappop"><b>${p}/10 · ${esc(niceName(e.nev)).slice(0, 60)}</b><br>${line2}<br>${esc((at ? e.at?.indoklas : e.ai?.indoklas) || "")}<br><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.forras)} oldal</a></div>`);
   }
   if (pts.length) map.fitBounds(pts.map(([, c]) => c), { padding: [30, 30], maxZoom: 11 });
 }
 function atHead(n) {
+  if (S.tab === "ingatlan") return `<div class="tabhead"><span>${n ? `${n} ingatlan` : ""}</span>
+    <button class="linkbtn" id="toggle-map">${ic(S.map ? "sort" : "pin")}${S.map ? "Lista" : "Térkép"}</button></div>`;
   if (S.tab !== "alomtelek") return "";
   const urls = (S.settings?.at_kereso_urlek || []).length;
   return `<div class="tabhead"><span>${n ? `${n} hely` : ""}${urls ? `${n ? ", " : ""}${urls} portál-keresés` : `${n ? ", " : ""}portál-keresés nincs megadva`}</span>
@@ -656,7 +662,7 @@ function render() {
       : `<div class="empty"><strong>Nincs a szűrőknek megfelelő tétel</strong>${S.onlyRec ? "Kapcsold ki a „Csak ajánlott” szűrőt, ha az AI által elutasított tételeket is látni szeretnéd." : "Próbálj más keresőszót vagy forrást."}</div>`;
     return;
   }
-  if (S.tab === "alomtelek" && S.map) { main.innerHTML = atHead(items.length) + `<div id="map"></div><p class="mapnote" id="mapnote"></p>`; return drawMap(items); }
+  if ((S.tab === "alomtelek" || S.tab === "ingatlan") && S.map) { main.innerHTML = atHead(items.length) + `<div id="map"></div><p class="mapnote" id="mapnote"></p>`; return drawMap(items); }
   const shown = items.slice(0, S.shown);
   main.innerHTML = atHead(items.length) + shown.map((e) => isAtView(e) ? cardAt(e) : card(e)).join("") +
     (items.length > shown.length ? `<button class="morebtn" id="more">További ${Math.min(PAGE, items.length - shown.length)} tétel (még ${items.length - shown.length})</button>` : "");
