@@ -1,5 +1,5 @@
 // Service worker: az app héja offline is betölt; az index mindig hálózatról frissül, ha van net.
-const SHELL = "arveres-shell-v14";
+const SHELL = "arveres-shell-v15";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (e) => {

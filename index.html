@@ -81,6 +81,7 @@ main{padding:14px 12px calc(var(--tab-h) + 24px + env(safe-area-inset-bottom));m
 .pill.new{background:var(--stamp);color:#fff}
 .pill.muted{background:rgba(255,255,255,.88);color:#3d4556}
 .pill.drop{background:#1f7a4d;color:#fff}
+.pill.gone{background:#8a2b2b;color:#fff}
 .media.noimg .pill{background:var(--card);color:var(--ink-soft);border:1px solid var(--line)}
 .stamp{position:absolute;right:10px;top:10px;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;transform:rotate(-9deg);
   border:2px solid var(--ink-soft);box-shadow:inset 0 0 0 3px var(--card),inset 0 0 0 4px var(--ink-soft);
@@ -494,7 +495,7 @@ function card(e) {
     ${e.kiemelt ? `<div class="flag">${ic("flag")}Kiemelt megye: ${esc(e.kiemelt)}</div>` : ""}
     <div class="media${e.image_url ? "" : " noimg"}">
       ${e.image_url ? `<img src="${esc(e.image_url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : ""}
-      <div class="pills">${isNew(e) ? `<span class="pill new">Új</span>` : ""}<span class="pill">${esc(e.forras)}</span>${e.ajanlott ? "" : `<span class="pill muted">Nem ajánlott</span>`}</div>
+      <div class="pills">${isNew(e) ? `<span class="pill new">Új</span>` : ""}<span class="pill">${esc(e.forras)}</span>${e.eltunt ? `<span class="pill gone">Eltűnt</span>` : ""}${e.ajanlott ? "" : `<span class="pill muted">Nem ajánlott</span>`}</div>
       <div class="stamp${score >= 8 ? " hot" : ""}" role="img" aria-label="AI értékelés: ${score} a 10-ből"><span>${score}<small>/10</small></span></div>
     </div>
     <div class="body">
@@ -547,8 +548,8 @@ function cardAt(e) {
   return `<article class="lot${r.ajanlott ? "" : " rejected"}" data-key="${esc(e.key)}">
     <div class="media${e.image_url ? "" : " noimg"}">
       ${e.image_url ? `<img src="${esc(e.image_url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : ""}
-      <div class="pills">${isNew(e) ? `<span class="pill new">Új</span>` : ""}<span class="pill">${esc(e.forras)}</span>${e.arcsokkenes ? `<span class="pill drop" title="Korábbi ár: ${esc(ftShort(e.arcsokkenes))}">↓ ${Math.round((1 - e.min_ar / e.arcsokkenes) * 100)}%</span>` : ""}${r.ajanlott ? "" : `<span class="pill muted">${r.gyors ? "Gyorsszűrés" : "Nem ajánlott"}</span>`}</div>
-      <div class="stamp${score >= 8 ? " hot" : ""}" role="img" aria-label="Álomtelek-pont: ${score} a 10-ből"><span>${score}<small>/10</small></span></div>
+      <div class="pills">${isNew(e) ? `<span class="pill new">Új</span>` : ""}<span class="pill">${esc(e.forras)}</span>${e.arcsokkenes ? `<span class="pill drop" title="Korábbi ár: ${esc(ftShort(e.arcsokkenes))}">↓ ${Math.round((1 - e.min_ar / e.arcsokkenes) * 100)}%</span>` : ""}${e.eltunt ? `<span class="pill gone">Eltűnt</span>` : ""}${r.ajanlott ? "" : `<span class="pill muted">${r.szurt ? "Előszűrés" : r.gyors ? "Gyorsszűrés" : "Nem ajánlott"}</span>`}</div>
+      ${r.szurt ? "" : `<div class="stamp${score >= 8 ? " hot" : ""}" role="img" aria-label="Álomtelek-pont: ${score} a 10-ből"><span>${score}<small>/10</small></span></div>`}
     </div>
     <div class="body">
       <h3>${esc(niceName(e.nev))}</h3>
@@ -559,16 +560,16 @@ function cardAt(e) {
           <div><span>Terület</span><b>${area ? Math.round(area).toLocaleString("hu-HU") + " m²" : "?"}</b></div>
           <div><span>Ár / m²</span><b>${area && e.min_ar ? Math.round(e.min_ar / area).toLocaleString("hu-HU") + " Ft" : "–"}</b></div>
         </div>
-        <div class="attrs">
+        ${r.szurt || r.gyors ? "" : `<div class="attrs">
           ${attr("home", "Épület", EPULET[r.epulet] || "?", tone(r.epulet))}
           ${attr("drop", "Víz", (VAN[r.viz] || "?") + (r.viz_leiras ? ` (${r.viz_leiras})` : ""), tone(r.viz))}
           ${attr("bolt", "Villany", VAN[r.villany] || "?", tone(r.villany))}
           ${attr("road", "Út", UT[r.ut] || "?", tone(r.ut))}
           ${r.kornyezet ? attr("tree", "Környezet", r.kornyezet) : ""}
-        </div>
+        </div>`}
       </div>
       ${r.termofold_figyelmeztetes ? `<p class="warnline">${ic("alert")}<span>Termőföld is van benne: nem földművesként a megszerezhető terület korlátozott lehet, és elővásárlási jogok lehetnek.</span></p>` : ""}
-      ${r.indoklas ? `<p class="why">${esc(r.indoklas)}</p>` : ""}
+      ${r.szurt ? `<p class="why">Nem ment AI-értékelésre: ${esc(r.szurt)}</p>` : r.indoklas ? `<p class="why">${esc(r.indoklas)}</p>` : ""}
       ${r.kockazat ? `<p class="risk">${ic("alert")}<span>${esc(r.kockazat)}</span></p>` : ""}
       ${facts.length ? `<ul class="facts">${facts.map(([i, f]) => `<li>${ic(i)}<span>${f}</span></li>`).join("")}</ul>` : ""}
       ${more.length ? `<details class="more"><summary>Részletek</summary>${more.map((m) => `<p>${m}</p>`).join("")}</details>` : ""}
