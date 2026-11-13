@@ -599,6 +599,9 @@ function markVisited() {
   localStorage.setItem(LS_VISIT, JSON.stringify(S.visited));
 }
 const isNew = (e) => S.tab !== "saved" && (e.first_seen || "") > (S.prevVisit[S.tab] ?? "9999");
+/* pontszám → szín (10 sötétzöld … 1 piros; 0 = nincs pont, szürke) */
+const SCORE_COLORS = ["#8A92A1", "#b2182b", "#d73027", "#f46d43", "#fdae61", "#fee08b", "#d9ef8b", "#a6d96a", "#66bd63", "#1a9850", "#006837"];
+const scoreColor = (p) => SCORE_COLORS[Math.max(0, Math.min(10, Math.round(p || 0)))];
 const coords = (e) => { const m = /[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/.exec(e.maps_url || ""); return m ? [+m[1], +m[2]] : null; };
 function loadLeaflet() {
   if (window.L) return Promise.resolve();
@@ -616,15 +619,14 @@ async function drawMap(items) {
   const el = $("#map"); if (!el) return;
   const map = L.map(el, { zoomControl: true }).setView([47.16, 19.5], 7);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(map);
-  const col = getComputedStyle(document.documentElement);
   const at = S.tab === "alomtelek";
   for (const [e, c] of pts) {
     const p = at ? (e.at?.pont || 0) : (e.ai?.erdekesseg || 0), area = e.at?.terulet_m2 || e.terulet_m2;
     const rec = at ? e.at?.ajanlott : e.ajanlott;
     const line2 = at ? `${ftShort(e.min_ar)}${area ? ` · ${Math.round(area).toLocaleString("hu-HU")} m²` : ""}`
       : `${ftShort(e.min_ar)}${e.ai?.haszon_ft != null ? ` · haszon ${e.ai.haszon_ft >= 0 ? "+" : ""}${ftShort(e.ai.haszon_ft)}` : ""}`;
-    L.circleMarker(c, { radius: 7 + p, weight: 2, color: "#fff", fillOpacity: .9,
-      fillColor: p >= 8 ? col.getPropertyValue("--stamp") : rec ? col.getPropertyValue("--gain") : "#8A92A1" })
+    L.circleMarker(c, { radius: 6 + p, weight: 2, color: "#fff", fillOpacity: rec ? .92 : .6,
+      fillColor: scoreColor(p) })
       .addTo(map).bindPopup(`<div class="mappop"><b>${p}/10 · ${esc(niceName(e.nev)).slice(0, 60)}</b><br>${line2}<br>${esc((at ? e.at?.indoklas : e.ai?.indoklas) || "")}<br><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.forras)} oldal</a></div>`);
   }
   if (pts.length) map.fitBounds(pts.map(([, c]) => c), { padding: [30, 30], maxZoom: 11 });
