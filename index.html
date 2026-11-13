@@ -80,6 +80,7 @@ main{padding:14px 12px calc(var(--tab-h) + 24px + env(safe-area-inset-bottom));m
 .pill{background:rgba(20,26,39,.78);color:#fff;font:600 12px/1 var(--f-body);letter-spacing:.2px;padding:6px 8px;border-radius:6px;backdrop-filter:blur(4px)}
 .pill.new{background:var(--stamp);color:#fff}
 .pill.muted{background:rgba(255,255,255,.88);color:#3d4556}
+.pill.drop{background:#1f7a4d;color:#fff}
 .media.noimg .pill{background:var(--card);color:var(--ink-soft);border:1px solid var(--line)}
 .stamp{position:absolute;right:10px;top:10px;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;transform:rotate(-9deg);
   border:2px solid var(--ink-soft);box-shadow:inset 0 0 0 3px var(--card),inset 0 0 0 4px var(--ink-soft);
@@ -539,13 +540,14 @@ function cardAt(e) {
   if (e.cim || e.tav_km != null) facts.push(["pin", `${maps ? `<a href="${esc(maps)}" target="_blank" rel="noopener">${esc(e.cim || "Térkép")}</a>` : esc(e.cim)}${e.tav_km != null ? ` <span class="k">· ${e.tav_km} km Gödtől</span>` : ""}`]);
   if (e.befejezes) facts.push(["gavel", `<span class="k">Licit vége</span> ${calLink(fdate(e.befejezes), "Licit vége: " + e.nev, e.befejezes, e)}`]);
   if (e.megtekintes_ido) facts.push(["eye", `<span class="k">Megtekintés</span> ${calLink(fmtRange(e.megtekintes_ido), "Megtekintés: " + e.nev, e.megtekintes_ido, e)}`]);
-  const extras = (e.extra || []).map(stripEmoji).filter((x) => x && !/^Kiemelt megye|^Pontszám/.test(x));
+  if (e.linkek?.length) facts.push(["ext", `<span class="k">Más portálon is</span> ${e.linkek.map((l) => `<a href="${esc(l.u)}" target="_blank" rel="noopener">${esc(l.p)}</a>`).join(" · ")}`]);
+  const extras = (e.extra || []).map(stripEmoji).filter((x) => x && !/^Kiemelt megye|^Pontszám|^Árcsökkenés/.test(x));
   const more = [e.leiras && esc(e.leiras), ...extras.map(esc)].filter(Boolean);
   const sv = S.saved[e.key] || {};
   return `<article class="lot${r.ajanlott ? "" : " rejected"}" data-key="${esc(e.key)}">
     <div class="media${e.image_url ? "" : " noimg"}">
       ${e.image_url ? `<img src="${esc(e.image_url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : ""}
-      <div class="pills">${isNew(e) ? `<span class="pill new">Új</span>` : ""}<span class="pill">${esc(e.forras)}</span>${r.ajanlott ? "" : `<span class="pill muted">Nem ajánlott</span>`}</div>
+      <div class="pills">${isNew(e) ? `<span class="pill new">Új</span>` : ""}<span class="pill">${esc(e.forras)}</span>${e.arcsokkenes ? `<span class="pill drop" title="Korábbi ár: ${esc(ftShort(e.arcsokkenes))}">↓ ${Math.round((1 - e.min_ar / e.arcsokkenes) * 100)}%</span>` : ""}${r.ajanlott ? "" : `<span class="pill muted">${r.gyors ? "Gyorsszűrés" : "Nem ajánlott"}</span>`}</div>
       <div class="stamp${score >= 8 ? " hot" : ""}" role="img" aria-label="Álomtelek-pont: ${score} a 10-ből"><span>${score}<small>/10</small></span></div>
     </div>
     <div class="body">
@@ -693,10 +695,11 @@ const listPanel = ([k, t, hnt, ph], s) => `<section class="panel" data-list="${k
       <div class="taglist">${(s[k] || []).map((v, i) => `<span class="tag">${esc(v)}<button type="button" data-del="${i}" aria-label="${esc(v)} törlése">×</button></span>`).join("")}</div>
       <div class="addrow"><input placeholder="${ph}" aria-label="${t}: új elem"><button type="button" class="btn ghost" data-add>Hozzáadás</button></div></section>`;
 const AT_DEFAULTS = { ing_min_haszon: 300000, ing_min_arany: 20, ing_min_erdekesseg: 6, ai_kepek: true, at_be: true, at_max_ar: 10000000, at_min_terulet: 4000, at_kell_epulet: true, at_portalok: true, at_viz: "fontos", at_max_tav_km: 0,
-  at_megyek: [], at_min_pont: 6, at_csak_1_1: true, at_tiltott_szavak: ["lakottan", "haszonélvezet"], at_kereso_urlek: [], at_rolam: [] };
+  at_megyek: [], at_min_pont: 6, at_elo_min: 5, at_csak_1_1: true, at_tiltott_szavak: ["lakottan", "haszonélvezet"], at_kereso_urlek: [], at_rolam: [] };
 const AT_NUMS = [
   ["at_max_ar", "Maximális ár", "Ft"], ["at_min_terulet", "Minimális terület", "m²"],
   ["at_max_tav_km", "Maximális távolság Gödtől", "km, 0 = bárhol"], ["at_min_pont", "Minimális álomtelek-pont", "1–10, ennyitől jön értesítés"],
+  ["at_elo_min", "Gyorsszűrés küszöbe", "1–10, ez alatt nem megy részletes AI-értékelésre"],
 ];
 const AT_CHECKS = [["at_be", "Álomtelek-keresés bekapcsolva"], ["at_kell_epulet", "Legyen rajta épület (felújítandó is jó)"], ["at_csak_1_1", "Csak teljes tulajdon (1/1)"], ["at_portalok", "Portálok figyelése: Otthontérkép, Ingatlanbazár, Zenga, Agroinform, Jófogás"]];
 const AT_LISTS = [
