@@ -153,6 +153,14 @@ details.more p{margin:4px 0 8px;white-space:pre-line;color:var(--ink-soft)}
 .mappop b{font:600 15px var(--f-cond)}
 .mappop a{color:#1F2A44;font-weight:600}
 .mapnote{font-size:13px;color:var(--ink-soft);margin:-6px 2px 12px}
+.sheet{position:fixed;inset:0;z-index:1200;display:flex;flex-direction:column;justify-content:flex-end}
+.sheet[hidden]{display:none}
+.sheet-bd{position:absolute;inset:0;background:rgba(10,15,25,.45);border:0;cursor:pointer}
+.sheet-body{position:relative;max-height:86vh;overflow:auto;background:var(--paper);border-radius:16px 16px 0 0;padding:10px 12px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.25);animation:sheetin .18s ease-out}
+@keyframes sheetin{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+.sheet-top{display:flex;justify-content:space-between;align-items:center;margin:0 4px 8px}
+.sheet-grip{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 8px}
+.mappop .mapopen{margin-top:6px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);font-weight:600;cursor:pointer}
 .mapcols{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
 .mapcols .chip{height:30px;padding:0 9px}
 .mapcols .dot{width:12px;height:12px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1px var(--line)}
@@ -639,9 +647,11 @@ async function drawMap(items) {
       : `${ftShort(e.min_ar)}${e.ai?.haszon_ft != null ? ` · haszon ${e.ai.haszon_ft >= 0 ? "+" : ""}${ftShort(e.ai.haszon_ft)}` : ""}`;
     L.circleMarker(c, { radius: 6 + p, weight: 2, color: "#fff", fillOpacity: rec ? .92 : .6,
       fillColor: scoreColor(p) })
-      .addTo(map).bindPopup(`<div class="mappop"><b>${p}/10 · ${esc(niceName(e.nev)).slice(0, 60)}</b><br>${line2}<br>${esc((at ? e.at?.indoklas : e.ai?.indoklas) || "")}<br><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.forras)} oldal</a></div>`);
+      .addTo(map).bindPopup(`<div class="mappop"><b>${p}/10 · ${esc(niceName(e.nev)).slice(0, 60)}</b><br>${line2}<br>${esc((at ? e.at?.indoklas : e.ai?.indoklas) || "")}<br><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.forras)} oldal</a><br><button class="mapopen" data-open="${esc(e.key)}">Kártya megnyitása</button></div>`);
   }
-  if (pts.length) map.fitBounds(pts.map(([, c]) => c), { padding: [30, 30], maxZoom: 11 });
+  if (S.mapView && S.mapView.tab === S.tab) map.setView(S.mapView.c, S.mapView.z);
+  else if (pts.length) map.fitBounds(pts.map(([, c]) => c), { padding: [30, 30], maxZoom: 11 });
+  map.on("moveend", () => { S.mapView = { tab: S.tab, c: map.getCenter(), z: map.getZoom() }; });
 }
 function atHead(n) {
   if (S.tab === "ingo") return `<div class="tabhead"><span>${n ? `${n} tétel` : ""}</span>
@@ -654,8 +664,22 @@ function atHead(n) {
     <span style="display:flex;gap:14px"><button class="linkbtn" id="toggle-map">${ic(S.map ? "sort" : "pin")}${S.map ? "Lista" : "Térkép"}</button>
     <button class="linkbtn" id="goto-at">${ic("sliders")}Beállítások</button></span></div>`;
 }
+function renderSheet() {
+  let el = document.getElementById("sheet");
+  if (!el) {
+    el = document.createElement("div"); el.id = "sheet"; el.className = "sheet"; el.hidden = true;
+    el.innerHTML = `<button class="sheet-bd" id="sheet-bd" aria-label="Bezárás"></button><div class="sheet-body" role="dialog" aria-modal="true">
+      <div class="sheet-grip"></div><div class="sheet-top"><span class="k">Részletek</span><button class="linkbtn" id="sheet-x">Bezárás</button></div><div id="sheet-card"></div></div>`;
+    document.body.appendChild(el);
+  }
+  const e = S.sheetKey && S.byKey[S.sheetKey];
+  el.hidden = !e;
+  document.body.style.overflow = e ? "hidden" : "";
+  if (e) $("#sheet-card").innerHTML = isAtView(e) ? cardAt(e) : card(e);
+}
 function render() {
   renderStatus();
+  renderSheet();
   const counts = { ingo: 0, ingatlan: 0 };
   counts.alomtelek = 0;
   markVisited();
@@ -857,12 +881,13 @@ function applyHash() {                       // Telegram-link: …/#alomtelek, #
   return true;
 }
 applyHash();
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && S.sheetKey) { S.sheetKey = null; renderSheet(); } });
 window.addEventListener("hashchange", () => { if (applyHash()) { render(); window.scrollTo(0, 0); } });
 document.addEventListener("click", async (ev) => {
   const t = ev.target.closest("button,[data-tab]");
   if (!t) return;
   if (t.dataset.tab) {
-    S.tab = t.dataset.tab; S.shown = PAGE; delete S.prevVisit[S.tab];
+    S.tab = t.dataset.tab; S.shown = PAGE; S.sheetKey = null; delete S.prevVisit[S.tab];
     document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", b === t));
     render(); window.scrollTo(0, 0); return;
   }
@@ -874,7 +899,9 @@ document.addEventListener("click", async (ev) => {
   if (t.dataset.src) { S.src[t.dataset.src] = !S.src[t.dataset.src]; t.setAttribute("aria-pressed", S.src[t.dataset.src]); S.shown = PAGE; return render(); }
   if (t.dataset.f) { S[t.dataset.f] = !S[t.dataset.f]; t.setAttribute("aria-pressed", S[t.dataset.f]); S.shown = PAGE; return render(); }
   if (t.id === "more") { S.shown += PAGE; return render(); }
-  if (t.id === "toggle-map") { S.map = !S.map; return render(); }
+  if (t.id === "toggle-map") { S.map = !S.map; S.mapView = null; return render(); }
+  if (t.dataset.open) { S.sheetKey = t.dataset.open; return renderSheet(); }
+  if (t.id === "sheet-x" || t.id === "sheet-bd") { S.sheetKey = null; return renderSheet(); }
   if (t.dataset.mc != null) {
     const i = +t.dataset.mc; S.mapCols[i] = S.mapCols[i] ? 0 : 1;
     try { localStorage.setItem(LS_MAPCOLS, JSON.stringify(S.mapCols)); } catch {}
