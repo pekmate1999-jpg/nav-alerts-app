@@ -52,7 +52,8 @@ header.top{position:sticky;top:0;z-index:5;background:var(--head);color:var(--he
 .searchbox{position:relative}
 .searchbox .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint)}
 .search{width:100%;height:42px;padding:0 12px 0 38px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:15px}
-.frow{display:flex;gap:8px;align-items:center;margin-top:10px;overflow-x:auto;scrollbar-width:none;position:relative}
+.frow{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;margin-top:10px;position:relative}
+.frow .vsep{display:none}
 .frow::-webkit-scrollbar{display:none}
 .seg{display:inline-flex;flex:none;background:var(--sunk);border-radius:9px;padding:3px;border:1px solid var(--line)}
 .seg button{border:0;background:none;padding:5px 12px;border-radius:7px;font-weight:600;font-size:14px;color:var(--ink-soft);cursor:pointer}
@@ -152,6 +153,10 @@ details.more p{margin:4px 0 8px;white-space:pre-line;color:var(--ink-soft)}
 .mappop b{font:600 15px var(--f-cond)}
 .mappop a{color:#1F2A44;font-weight:600}
 .mapnote{font-size:13px;color:var(--ink-soft);margin:-6px 2px 12px}
+.mapcols{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.mapcols .chip{height:30px;padding:0 9px}
+.mapcols .dot{width:12px;height:12px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.mapcols .chip[aria-pressed="false"]{opacity:.45;text-decoration:line-through}
 
 /* alsó menü */
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(5,1fr);
@@ -289,13 +294,16 @@ textarea.rolam{width:100%;min-height:160px;padding:10px 12px;border:1px solid va
 /* =================== állapot =================== */
 const LS = "arveres-cfg";
 const LS_VISIT = "arveres-visited";
+const LS_MAPCOLS = "arveres-mapcols";
+const MAP_BUCKETS = [[9, 10, "9–10"], [7, 8, "7–8"], [5, 6, "5–6"], [3, 4, "3–4"], [0, 2, "0–2"]];
 const PAGE = 25;
 const S = {
   cfg: JSON.parse(localStorage.getItem(LS) || "null"),
   feed: [], byKey: {}, fb: {}, appFb: [], saved: {}, settings: null, settingsTs: "",
   tab: "ingo", shown: PAGE, q: "", sort: "score", onlyRec: true, hidden: false,
   src: { NAV: true, MBVK: true, MNV: true, "Portál": true },
-  visited: JSON.parse(localStorage.getItem(LS_VISIT) || "null"), prevVisit: {}, run: null, loadedAt: null,
+  visited: JSON.parse(localStorage.getItem(LS_VISIT) || "null"),
+  mapCols: (() => { try { const v = JSON.parse(localStorage.getItem(LS_MAPCOLS)); return Array.isArray(v) && v.length === 5 ? v : [1, 1, 1, 1, 1]; } catch { return [1, 1, 1, 1, 1]; } })(), prevVisit: {}, run: null, loadedAt: null,
 };
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -611,10 +619,14 @@ function loadLeaflet() {
   });
   return loadLeaflet.p;
 }
+const mapScore = (e) => S.tab === "alomtelek" ? (e.at?.pont || 0) : (e.ai?.erdekesseg || 0);
+const bucketOf = (p) => MAP_BUCKETS.findIndex(([lo, hi]) => Math.round(p) >= lo && Math.round(p) <= hi);
 async function drawMap(items) {
-  const pts = items.map((e) => [e, coords(e)]).filter(([, c]) => c);
+  const all = items.map((e) => [e, coords(e)]).filter(([, c]) => c);
+  const pts = all.filter(([e]) => S.mapCols[bucketOf(mapScore(e))] !== 0 && S.mapCols[bucketOf(mapScore(e))] !== false);
   const note = $("#mapnote");
-  if (note) note.textContent = pts.length < items.length ? `${items.length - pts.length} helynek nincs pontos helye, azok csak a listában látszanak.` : "";
+  if (note) note.textContent = [pts.length < all.length ? `${all.length - pts.length} hely elrejtve a színszűrő miatt.` : "",
+    all.length < items.length ? `${items.length - all.length} helynek nincs pontos helye, azok csak a listában látszanak.` : ""].filter(Boolean).join(" ");
   try { await loadLeaflet(); } catch (e) { toast(e.message); return; }
   const el = $("#map"); if (!el) return;
   const map = L.map(el, { zoomControl: true }).setView([47.16, 19.5], 7);
@@ -667,7 +679,12 @@ function render() {
       : `<div class="empty"><strong>Nincs a szűrőknek megfelelő tétel</strong>${S.onlyRec ? "Kapcsold ki a „Csak ajánlott” szűrőt, ha az AI által elutasított tételeket is látni szeretnéd." : "Próbálj más keresőszót vagy forrást."}</div>`;
     return;
   }
-  if ((S.tab === "alomtelek" || S.tab === "ingatlan") && S.map) { main.innerHTML = atHead(items.length) + `<div id="map"></div><p class="mapnote" id="mapnote"></p>`; return drawMap(items); }
+  if ((S.tab === "alomtelek" || S.tab === "ingatlan") && S.map) {
+    const cols = `<div class="mapcols" role="group" aria-label="Színek a térképen">${MAP_BUCKETS.map(([lo, hi, l], i) =>
+      `<button class="chip" data-mc="${i}" aria-pressed="${!!S.mapCols[i]}"><span class="dot" style="background:${scoreColor((lo + hi) / 2)}"></span>${l}</button>`).join("")}</div>`;
+    main.innerHTML = atHead(items.length) + cols + `<div id="map"></div><p class="mapnote" id="mapnote"></p>`;
+    return drawMap(items);
+  }
   const shown = items.slice(0, S.shown);
   main.innerHTML = atHead(items.length) + shown.map((e) => isAtView(e) ? cardAt(e) : card(e)).join("") +
     (items.length > shown.length ? `<button class="morebtn" id="more">További ${Math.min(PAGE, items.length - shown.length)} tétel (még ${items.length - shown.length})</button>` : "");
@@ -856,6 +873,11 @@ document.addEventListener("click", async (ev) => {
   if (t.dataset.f) { S[t.dataset.f] = !S[t.dataset.f]; t.setAttribute("aria-pressed", S[t.dataset.f]); S.shown = PAGE; return render(); }
   if (t.id === "more") { S.shown += PAGE; return render(); }
   if (t.id === "toggle-map") { S.map = !S.map; return render(); }
+  if (t.dataset.mc != null) {
+    const i = +t.dataset.mc; S.mapCols[i] = S.mapCols[i] ? 0 : 1;
+    try { localStorage.setItem(LS_MAPCOLS, JSON.stringify(S.mapCols)); } catch {}
+    return render();
+  }
   if (t.id === "goto-at") {
     S.tab = "settings"; document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === "settings"));
     render(); setTimeout(() => document.getElementById("at-settings")?.scrollIntoView({ block: "start" }), 50); return;
