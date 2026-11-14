@@ -127,6 +127,7 @@ details.more p{margin:4px 0 8px;white-space:pre-line;color:var(--ink-soft)}
 .actions .up[aria-pressed="true"]{color:var(--gain)}
 .actions .up[aria-pressed="true"] .ic{fill:var(--gain-bg)}
 .actions .down[aria-pressed="true"]{color:var(--loss)}
+.actions .bad[aria-pressed="true"]{color:var(--loss)}
 .savedbox{display:grid;grid-template-columns:1fr 128px;gap:10px;margin:12px 0 4px}
 .savedbox textarea,.savedbox input{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--sunk);font-size:14px}
 .savedbox label{display:block;font-size:12px;color:var(--ink-faint);margin-bottom:3px}
@@ -160,7 +161,7 @@ details.more p{margin:4px 0 8px;white-space:pre-line;color:var(--ink-soft)}
 @keyframes sheetin{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
 .sheet-top{display:flex;justify-content:space-between;align-items:center;margin:0 4px 8px}
 .sheet-grip{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 8px}
-.mappop .mapopen{margin-top:6px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);font-weight:600;cursor:pointer}
+.mappop .mapopen{margin-top:8px;padding:8px 12px;border-radius:8px;border:0;background:#16325c;color:#fff;font-weight:600;font-size:14px;cursor:pointer}
 .mapcols{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
 .mapcols .chip{height:30px;padding:0 9px}
 .mapcols .dot{width:12px;height:12px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1px var(--line)}
@@ -246,7 +247,8 @@ textarea.rolam{width:100%;min-height:160px;padding:10px 12px;border:1px solid va
   <symbol id="i-area" viewBox="0 0 24 24"><path d="M3 3h18v18H3zM3 9h18M9 21V9"/></symbol>
   <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></symbol>
   <symbol id="i-road" viewBox="0 0 24 24"><path d="M4 22L9 2M20 22L15 2M12 6v2M12 12v2M12 18v2"/></symbol>
-  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></symbol>
 </svg>
 <header class="top">
   <div class="top-row">
@@ -307,7 +309,7 @@ const MAP_BUCKETS = [[9, 10, "9–10"], [7, 8, "7–8"], [5, 6, "5–6"], [3, 4,
 const PAGE = 25;
 const S = {
   cfg: JSON.parse(localStorage.getItem(LS) || "null"),
-  feed: [], byKey: {}, fb: {}, appFb: [], saved: {}, settings: null, settingsTs: "",
+  feed: [], byKey: {}, fb: {}, bad: {}, appFb: [], saved: {}, settings: null, settingsTs: "",
   tab: "ingo", shown: PAGE, q: "", sort: "score", onlyRec: true, hidden: false,
   src: { NAV: true, MBVK: true, MNV: true, "Portál": true },
   visited: JSON.parse(localStorage.getItem(LS_VISIT) || "null"),
@@ -386,6 +388,7 @@ function mergeFeedback(botFb, appFb) {
     if (!m[f.key] || (f.ts || "") >= (m[f.key].ts || "")) m[f.key] = f;
   }
   S.fb = Object.fromEntries(Object.entries(m).map(([k, f]) => [k, f.ertek]));
+  S.bad = Object.fromEntries(Object.entries(m).filter(([, f]) => f.ok === "hibas").map(([k]) => [k, 1]));
 }
 
 async function load() {
@@ -537,6 +540,7 @@ function card(e) {
         <button data-act="save" aria-pressed="${saved}">${ic("star")}${saved ? "Mentve" : "Mentés"}</button>
         <button class="up" data-act="up" aria-pressed="${fb === 1}" aria-label="Tetszik">${ic("up")}</button>
         <button class="down" data-act="down" aria-pressed="${fb === 0}" aria-label="Nem érdekel, elrejtés">${ic("down")}</button>
+        <button class="bad" data-act="bad" aria-pressed="${S.bad[fbKey(e)] ? "true" : "false"}" aria-label="Hibás adat, törlés" title="Hibás adat (rossz ár/terület) – törlés">${ic("trash")}</button>
         <a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.forras)} ${ic("ext")}</a>
       </div>
     </div>
@@ -584,6 +588,7 @@ function cardAt(e) {
           ${r.kornyezet ? attr("tree", "Környezet", r.kornyezet) : ""}
         </div>`}
       </div>
+      ${r.adat_hiba ? `<p class="warnline">${ic("alert")}<span>Adathiba a hirdetésben: ${esc(r.adat_hiba)}${r.valos_ar_ft ? ` (valós ár: ${esc(ftShort(r.valos_ar_ft))})` : ""}</span></p>` : ""}
       ${r.termofold_figyelmeztetes ? `<p class="warnline">${ic("alert")}<span>Termőföld is van benne: nem földművesként a megszerezhető terület korlátozott lehet, és elővásárlási jogok lehetnek.</span></p>` : ""}
       ${r.szurt ? `<p class="why">Nem ment AI-értékelésre: ${esc(r.szurt)}</p>` : r.indoklas ? `<p class="why">${esc(r.indoklas)}</p>` : ""}
       ${r.kockazat ? `<p class="risk">${ic("alert")}<span>${esc(r.kockazat)}</span></p>` : ""}
@@ -597,6 +602,7 @@ function cardAt(e) {
         <button data-act="save" aria-pressed="${saved}">${ic("star")}${saved ? "Mentve" : "Mentés"}</button>
         <button class="up" data-act="up" aria-pressed="${fb === 1}" aria-label="Tetszik">${ic("up")}</button>
         <button class="down" data-act="down" aria-pressed="${fb === 0}" aria-label="Nem érdekel, elrejtés">${ic("down")}</button>
+        <button class="bad" data-act="bad" aria-pressed="${S.bad[fbKey(e)] ? "true" : "false"}" aria-label="Hibás adat, törlés" title="Hibás adat (rossz ár/terület) – törlés">${ic("trash")}</button>
         <a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.forras)} ${ic("ext")}</a>
       </div>
     </div>
@@ -920,6 +926,17 @@ document.addEventListener("click", async (ev) => {
       if (S.saved[key]) { delete S.saved[key]; toast("Kivetted a mentettek közül"); }
       else { S.saved[key] = { ts: new Date().toISOString() }; toast("Mentve. A bot figyeli a változásait."); }
       queueWrite("app/saved.json", () => S.saved, "app: mentett tételek");
+    } else if (t.dataset.act === "bad") {
+      const fk = e ? fbKey(e) : key;
+      S.appFb = S.appFb.filter((f) => f.key !== fk);
+      if (S.bad[fk]) { delete S.bad[fk]; delete S.fb[fk]; toast("Visszaállítva"); }
+      else {
+        S.appFb.push({ key: fk, ertek: 0, ok: "hibas", ts: new Date().toISOString(), nev: e?.nev, kategoria: isAtView(e || {}) ? "álomtelek" : e?.kategoria, min_ar: e?.min_ar });
+        S.fb[fk] = 0; S.bad[fk] = 1;
+        if (S.sheetKey === key) S.sheetKey = null;
+        toast("Hibás adatként törölve – az AI ebből tanul (Elrejtettek alatt visszaállítható)");
+      }
+      queueWrite("app/feedback.json", () => S.appFb, "app: visszajelzés");
     } else {
       const val = t.dataset.act === "up" ? 1 : 0;
       const fk = e ? fbKey(e) : key;
