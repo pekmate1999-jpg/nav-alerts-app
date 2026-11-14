@@ -644,6 +644,8 @@ async function drawMap(items) {
   if (pts.length) map.fitBounds(pts.map(([, c]) => c), { padding: [30, 30], maxZoom: 11 });
 }
 function atHead(n) {
+  if (S.tab === "ingo") return `<div class="tabhead"><span>${n ? `${n} tétel` : ""}</span>
+    <button class="linkbtn" id="toggle-map">${ic(S.map ? "sort" : "pin")}${S.map ? "Lista" : "Térkép"}</button></div>`;
   if (S.tab === "ingatlan") return `<div class="tabhead"><span>${n ? `${n} ingatlan` : ""}</span>
     <button class="linkbtn" id="toggle-map">${ic(S.map ? "sort" : "pin")}${S.map ? "Lista" : "Térkép"}</button></div>`;
   if (S.tab !== "alomtelek") return "";
@@ -679,7 +681,7 @@ function render() {
       : `<div class="empty"><strong>Nincs a szűrőknek megfelelő tétel</strong>${S.onlyRec ? "Kapcsold ki a „Csak ajánlott” szűrőt, ha az AI által elutasított tételeket is látni szeretnéd." : "Próbálj más keresőszót vagy forrást."}</div>`;
     return;
   }
-  if ((S.tab === "alomtelek" || S.tab === "ingatlan") && S.map) {
+  if (["alomtelek", "ingatlan", "ingo"].includes(S.tab) && S.map) {
     const cols = `<div class="mapcols" role="group" aria-label="Színek a térképen">${MAP_BUCKETS.map(([lo, hi, l], i) =>
       `<button class="chip" data-mc="${i}" aria-pressed="${!!S.mapCols[i]}"><span class="dot" style="background:${scoreColor((lo + hi) / 2)}"></span>${l}</button>`).join("")}</div>`;
     main.innerHTML = atHead(items.length) + cols + `<div id="map"></div><p class="mapnote" id="mapnote"></p>`;
