@@ -113,6 +113,14 @@ main{padding:14px 12px calc(var(--tab-h) + 24px + env(safe-area-inset-bottom));m
 .facts a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
 .facts .k{color:var(--ink-faint);white-space:nowrap}
 details.more{margin:6px 0 4px;font-size:14px}
+.editbtn{font-size:13px;margin:2px 0 6px;color:var(--ink-soft)}
+.editform{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 10px;padding:10px;border:1px solid var(--line);border-radius:10px}
+.editform label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-soft);min-width:0}
+.editform input{width:100%;box-sizing:border-box;min-width:0;height:38px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:15px}
+.editform .row{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}
+.editform button{height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-weight:600}
+.editform button[type=submit]{background:#16325c;color:#fff;border:0}
+.pill.edit{background:#5b4a14;color:#fff}
 details.more summary{cursor:pointer;color:var(--ink-soft);padding:6px 0;font-weight:500;list-style:none}
 details.more summary::-webkit-details-marker{display:none}
 details.more summary::after{content:" ▾";color:var(--ink-faint)}
@@ -311,7 +319,7 @@ const MAP_BUCKETS = [[9, 10, "9–10"], [7, 8, "7–8"], [5, 6, "5–6"], [3, 4,
 const PAGE = 25;
 const S = {
   cfg: JSON.parse(localStorage.getItem(LS) || "null"),
-  feed: [], byKey: {}, fb: {}, bad: {}, appFb: [], saved: {}, settings: null, settingsTs: "",
+  feed: [], byKey: {}, fb: {}, bad: {}, edits: {}, editing: null, appFb: [], saved: {}, settings: null, settingsTs: "",
   tab: "ingo", shown: PAGE, q: "", sort: "score", onlyRec: true, hidden: false,
   src: { NAV: true, MBVK: true, MNV: true, "Portál": true },
   visited: JSON.parse(localStorage.getItem(LS_VISIT) || "null"),
@@ -382,6 +390,36 @@ async function cachedFeed() { try { const c = await caches.open("arveres-data");
 function setFeed(feed) {
   S.feed = Array.isArray(feed) ? feed : [];
   S.byKey = Object.fromEntries(S.feed.map((e) => [e.key, e]));
+  applyEdits();
+}
+/* A felhasználó által javított ár / terület (app/edits.json) – a bot is ezt használja újraértékeléskor */
+function applyEdits() {
+  for (const [k, ed] of Object.entries(S.edits || {})) {
+    const e = S.byKey[k];
+    if (!e || !ed) continue;
+    if (e._orig_ar === undefined) { e._orig_ar = e.min_ar; e._orig_t = e.terulet_m2 ?? e.at?.terulet_m2 ?? null; }
+    if (ed.min_ar) e.min_ar = ed.min_ar;
+    if (ed.terulet_m2) { e.terulet_m2 = ed.terulet_m2; if (e.at) e.at = { ...e.at, terulet_m2: ed.terulet_m2 }; }
+    e.javitva = true;
+  }
+}
+function parseNum(v) {
+  let t = String(v || "").toLowerCase().replace(/\s|ft|m2|m²/g, "").replace(",", ".");
+  let mul = 1;
+  if (/(m|millió|mio)$/.test(t)) { mul = 1e6; t = t.replace(/(millió|mio|m)$/, ""); }
+  else if (/(e|ezer|k)$/.test(t)) { mul = 1e3; t = t.replace(/(ezer|e|k)$/, ""); }
+  if (mul === 1) t = t.replace(/\./g, "");
+  const n = parseFloat(t);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * mul) : null;
+}
+function editUi(e) {
+  if (S.editing !== e.key) return `<button class="linkbtn editbtn" data-act="edit">✏️ Rossz az ár vagy a terület? Javítás</button>`;
+  const t = e.terulet_m2 ?? e.at?.terulet_m2 ?? "";
+  return `<form class="editform" data-key="${esc(e.key)}">
+    <label>Valós ár (Ft)<input name="ar" inputmode="text" placeholder="pl. 31M vagy 31000000" value="${esc(e.min_ar || "")}"></label>
+    <label>Telek (m²)<input name="t" inputmode="numeric" placeholder="pl. 1100" value="${esc(t)}"></label>
+    <div class="row">${S.edits?.[e.key] ? `<button type="button" data-act="edit-reset">Eredeti</button>` : ""}<button type="button" data-act="edit-cancel">Mégse</button><button type="submit">Mentés</button></div>
+  </form>`;
 }
 function mergeFeedback(botFb, appFb) {
   const m = {};
@@ -396,12 +434,13 @@ function mergeFeedback(botFb, appFb) {
 async function load() {
   $("#status").textContent = "Frissítés…";
   try {
-    const [feed, botFb, appFb, saved, stSet, appSet, portals] = await Promise.all([
+    const [feed, botFb, appFb, saved, stSet, appSet, portals, edits] = await Promise.all([
       getRaw("state/feed.json", []), getRaw("state/feedback.json", []), getRaw("app/feedback.json", []),
       getRaw("app/saved.json", {}), getRaw("state/settings.json", null), getRaw("app/settings.json", null),
-      getRaw("state/portal_status.json", {}),
+      getRaw("state/portal_status.json", {}), getRaw("app/edits.json", {}),
     ]);
     S.portals = portals || {};
+    S.edits = edits && typeof edits === "object" ? edits : {};
     setFeed(feed); cacheFeed(feed);
     S.appFb = Array.isArray(appFb) ? appFb : [];
     mergeFeedback(botFb, S.appFb);
@@ -516,7 +555,7 @@ function card(e) {
     ${e.kiemelt ? `<div class="flag">${ic("flag")}Kiemelt megye: ${esc(e.kiemelt)}</div>` : ""}
     <div class="media${e.image_url ? "" : " noimg"}">
       ${e.image_url ? `<img src="${esc(e.image_url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : ""}
-      <div class="pills">${isNew(e) ? `<span class="pill new">Új</span>` : ""}<span class="pill">${esc(e.forras)}</span>${e.eltunt ? `<span class="pill gone">Eltűnt</span>` : ""}${e.ajanlott ? "" : `<span class="pill muted">Nem ajánlott</span>`}</div>
+      <div class="pills">${isNew(e) ? `<span class="pill new">Új</span>` : ""}<span class="pill">${esc(e.forras)}</span>${e.javitva ? `<span class="pill edit" title="Általad javított ár/terület">✏️ Javítva</span>` : ""}${e.eltunt ? `<span class="pill gone">Eltűnt</span>` : ""}${e.ajanlott ? "" : `<span class="pill muted">Nem ajánlott</span>`}</div>
       <div class="stamp${score >= 8 ? " hot" : ""}" role="img" aria-label="AI értékelés: ${score} a 10-ből"><span>${score}<small>/10</small></span></div>
     </div>
     <div class="body">
@@ -534,6 +573,7 @@ function card(e) {
       ${ai.kockazat ? `<p class="risk">${ic("alert")}<span>${esc(ai.kockazat)}</span></p>` : ""}
       ${facts.length ? `<ul class="facts">${facts.map(([i, f]) => `<li>${ic(i)}<span>${f}</span></li>`).join("")}</ul>` : ""}
       ${more.length ? `<details class="more"><summary>Részletek</summary>${more.map((m) => `<p>${m}</p>`).join("")}</details>` : ""}
+      ${editUi(e)}
       ${S.tab === "saved" ? `<div class="savedbox">
           <div><label for="n-${esc(e.key)}">Jegyzet</label><textarea id="n-${esc(e.key)}" data-note rows="2">${esc(sv.jegyzet || "")}</textarea></div>
           <div><label for="m-${esc(e.key)}">Max. licit (Ft)</label><input id="m-${esc(e.key)}" data-max inputmode="numeric" value="${sv.max_licit || ""}"></div>
@@ -570,7 +610,7 @@ function cardAt(e) {
   return `<article class="lot${r.ajanlott ? "" : " rejected"}" data-key="${esc(e.key)}">
     <div class="media${e.image_url ? "" : " noimg"}">
       ${e.image_url ? `<img src="${esc(e.image_url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : ""}
-      <div class="pills">${isNew(e) ? `<span class="pill new">Új</span>` : ""}<span class="pill">${esc(e.forras)}</span>${e.arcsokkenes ? `<span class="pill drop" title="Korábbi ár: ${esc(ftShort(e.arcsokkenes))}">↓ ${Math.round((1 - e.min_ar / e.arcsokkenes) * 100)}%</span>` : ""}${e.eltunt ? `<span class="pill gone">Eltűnt</span>` : ""}${r.ajanlott ? "" : `<span class="pill muted">${r.szurt ? "Előszűrés" : r.gyors ? "Gyorsszűrés" : "Nem ajánlott"}</span>`}</div>
+      <div class="pills">${isNew(e) ? `<span class="pill new">Új</span>` : ""}<span class="pill">${esc(e.forras)}</span>${e.javitva ? `<span class="pill edit" title="Általad javított ár/terület">✏️ Javítva</span>` : ""}${e.arcsokkenes && e.min_ar < e.arcsokkenes ? `<span class="pill drop" title="Korábbi ár: ${esc(ftShort(e.arcsokkenes))}">↓ ${Math.round((1 - e.min_ar / e.arcsokkenes) * 100)}%</span>` : ""}${e.eltunt ? `<span class="pill gone">Eltűnt</span>` : ""}${r.ajanlott ? "" : `<span class="pill muted">${r.szurt ? "Előszűrés" : r.gyors ? "Gyorsszűrés" : "Nem ajánlott"}</span>`}</div>
       ${r.szurt ? "" : `<div class="stamp${score >= 8 ? " hot" : ""}" role="img" aria-label="Álomtelek-pont: ${score} a 10-ből"><span>${score}<small>/10</small></span></div>`}
     </div>
     <div class="body">
@@ -596,6 +636,7 @@ function cardAt(e) {
       ${r.kockazat ? `<p class="risk">${ic("alert")}<span>${esc(r.kockazat)}</span></p>` : ""}
       ${facts.length ? `<ul class="facts">${facts.map(([i, f]) => `<li>${ic(i)}<span>${f}</span></li>`).join("")}</ul>` : ""}
       ${more.length ? `<details class="more"><summary>Részletek</summary>${more.map((m) => `<p>${m}</p>`).join("")}</details>` : ""}
+      ${editUi(e)}
       ${S.tab === "saved" ? `<div class="savedbox">
           <div><label for="n-${esc(e.key)}">Jegyzet</label><textarea id="n-${esc(e.key)}" data-note rows="2">${esc(sv.jegyzet || "")}</textarea></div>
           <div><label for="m-${esc(e.key)}">Max. ár (Ft)</label><input id="m-${esc(e.key)}" data-max inputmode="numeric" value="${sv.max_licit || ""}"></div>
@@ -889,6 +930,26 @@ function applyHash() {                       // Telegram-link: …/#alomtelek, #
   return true;
 }
 applyHash();
+function rerender() { if (S.sheetKey) renderSheet(); render(); }
+document.addEventListener("submit", (ev) => {
+  const f = ev.target.closest(".editform");
+  if (!f) return;
+  ev.preventDefault();
+  const key = f.dataset.key, e = S.byKey[key];
+  const ar = parseNum(f.ar.value), t = parseNum(f.t.value);
+  if (!ar && !t) return toast("Adj meg egy árat vagy területet (pl. 31M, 1100)");
+  S.edits[key] = { ...(ar ? { min_ar: ar } : {}), ...(t ? { terulet_m2: t } : {}), ts: new Date().toISOString(), nev: e?.nev };
+  applyEdits();
+  const fk = e ? fbKey(e) : key;
+  if (S.bad[fk]) {                                   // javítva → már nem hibás: visszakerül
+    delete S.bad[fk]; delete S.fb[fk]; S.appFb = S.appFb.filter((x) => x.key !== fk);
+    queueWrite("app/feedback.json", () => S.appFb, "app: visszajelzés");
+  }
+  S.editing = null;
+  queueWrite("app/edits.json", () => S.edits, "app: ár/terület javítás");
+  toast("Javítva – a bot a következő futáskor ezzel értékeli újra");
+  rerender();
+});
 document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && S.sheetKey) { S.sheetKey = null; renderSheet(); } });
 window.addEventListener("hashchange", () => { if (applyHash()) { render(); window.scrollTo(0, 0); } });
 document.addEventListener("click", async (ev) => {
@@ -928,6 +989,16 @@ document.addEventListener("click", async (ev) => {
       if (S.saved[key]) { delete S.saved[key]; toast("Kivetted a mentettek közül"); }
       else { S.saved[key] = { ts: new Date().toISOString() }; toast("Mentve. A bot figyeli a változásait."); }
       queueWrite("app/saved.json", () => S.saved, "app: mentett tételek");
+    } else if (t.dataset.act === "edit") {
+      S.editing = key; return rerender();
+    } else if (t.dataset.act === "edit-cancel") {
+      S.editing = null; return rerender();
+    } else if (t.dataset.act === "edit-reset") {
+      const e2 = S.byKey[key];
+      if (e2 && e2._orig_ar !== undefined) { e2.min_ar = e2._orig_ar; if (e2._orig_t) { e2.terulet_m2 = e2._orig_t; if (e2.at) e2.at = { ...e2.at, terulet_m2: e2._orig_t }; } delete e2.javitva; }
+      delete S.edits[key]; S.editing = null;
+      queueWrite("app/edits.json", () => S.edits, "app: javítás visszavonva");
+      toast("Visszaállítva az eredeti adatra"); return rerender();
     } else if (t.dataset.act === "bad") {
       const fk = e ? fbKey(e) : key;
       S.appFb = S.appFb.filter((f) => f.key !== fk);
